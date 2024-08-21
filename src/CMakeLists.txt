@@ -4,6 +4,7 @@ project(olafs_neighbourhood)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-add_executable(Main main.cpp)
-add_compile_options(-Wall -luWS -lssl -lcrypto -lz -lpthread -Wall -Wextra -Werror -Wpedantic -Wconversion)
-target_link_libraries(Main uWebSockets)
+add_subdirectory(server)
+add_subdirectory(client)
+
+add_compile_options(-Wall -Wall -Wextra -Wpedantic -Wconversion)
