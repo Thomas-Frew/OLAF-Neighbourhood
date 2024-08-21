@@ -1,5 +1,4 @@
 #include <App.h>
-#include <boost/beast/core.hpp>
 #include <cstdlib>
 #include <iostream>
 
