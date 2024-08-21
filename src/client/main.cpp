@@ -13,8 +13,7 @@ namespace net = boost::asio;
 using tcp = boost::asio::ip::tcp;
 
 // Sends a WebSocket message and prints the response
-int main(int argc, char** argv)
-{
+int main(int argc, char **argv) {
     try {
         // Default settings
         std::string host = "localhost";
@@ -32,8 +31,8 @@ int main(int argc, char** argv)
         net::io_context ioc;
 
         // These objects perform our I/O
-        tcp::resolver resolver { ioc };
-        websocket::stream<tcp::socket> ws { ioc };
+        tcp::resolver resolver{ioc};
+        websocket::stream<tcp::socket> ws{ioc};
 
         // Look up the domain name
         auto const results = resolver.resolve(host, port);
@@ -47,10 +46,11 @@ int main(int argc, char** argv)
         host += ':' + ep.port();
 
         // Set a decorator to change the User-Agent of the handshake
-        ws.set_option(websocket::stream_base::decorator(
-            [](websocket::request_type& req) {
+        ws.set_option(
+            websocket::stream_base::decorator([](websocket::request_type &req) {
                 req.set(http::field::user_agent,
-                    std::string(BOOST_BEAST_VERSION_STRING) + " websocket-client-coro");
+                        std::string(BOOST_BEAST_VERSION_STRING) +
+                            " websocket-client-coro");
             }));
 
         // Perform the websocket handshake
@@ -82,7 +82,7 @@ int main(int argc, char** argv)
 
         // If we get here then the connection is closed gracefully
 
-    } catch (std::exception const& e) {
+    } catch (std::exception const &e) {
         std::cerr << "Error: " << e.what() << std::endl;
         return EXIT_FAILURE;
     }

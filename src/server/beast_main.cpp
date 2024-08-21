@@ -12,19 +12,26 @@ using tcp = boost::asio::ip::tcp;
 
 // This function handles an incoming WebSocket connection
 class WebSocketSession : public std::enable_shared_from_this<WebSocketSession> {
-public:
+  public:
     WebSocketSession(tcp::socket socket) : ws_(std::move(socket)) {}
 
     void run() {
         // Set a decorator to change the User-Agent of the handshake
-        ws_.set_option(websocket::stream_base::decorator([](websocket::request_type& req) { req.set(http::field::user_agent, std::string(BOOST_BEAST_VERSION_STRING) + " websocket-server"); }));
+        ws_.set_option(
+            websocket::stream_base::decorator([](websocket::request_type &req) {
+                req.set(http::field::user_agent,
+                        std::string(BOOST_BEAST_VERSION_STRING) +
+                            " websocket-server");
+            }));
 
         // Perform the WebSocket handshake
-        ws_.async_accept(beast::bind_front_handler(&WebSocketSession::on_accept, shared_from_this()));
+        ws_.async_accept(beast::bind_front_handler(&WebSocketSession::on_accept,
+                                                   shared_from_this()));
     }
 
-private:
-    void append_to_buffer(boost::beast::flat_buffer& buffer, const std::string& data) {
+  private:
+    void append_to_buffer(boost::beast::flat_buffer &buffer,
+                          const std::string &data) {
         boost::asio::mutable_buffer mutable_buf = buffer.prepare(data.size());
         std::memcpy(mutable_buf.data(), data.data(), data.size());
         buffer.commit(data.size());
@@ -37,7 +44,9 @@ private:
         }
 
         // Read a message from the client
-        ws_.async_read(buffer_, beast::bind_front_handler(&WebSocketSession::on_read, shared_from_this()));
+        ws_.async_read(buffer_,
+                       beast::bind_front_handler(&WebSocketSession::on_read,
+                                                 shared_from_this()));
     }
 
     void on_read(beast::error_code ec, std::size_t) {
@@ -49,10 +58,13 @@ private:
         // Construct a response buffer
         boost::beast::flat_buffer response_buffer;
         append_to_buffer(response_buffer, "Thanks for your message: ");
-        append_to_buffer(response_buffer, beast::buffers_to_string(buffer_.data()));
+        append_to_buffer(response_buffer,
+                         beast::buffers_to_string(buffer_.data()));
 
         // Echo the message back to the client
-        ws_.async_write(response_buffer.data(), beast::bind_front_handler(&WebSocketSession::on_write, shared_from_this()));
+        ws_.async_write(response_buffer.data(),
+                        beast::bind_front_handler(&WebSocketSession::on_write,
+                                                  shared_from_this()));
     }
 
     void on_write(beast::error_code ec, std::size_t) {
@@ -63,7 +75,9 @@ private:
 
         // Clear the buffer and close the connection
         buffer_.consume(buffer_.size());
-        ws_.async_close(websocket::close_code::normal, beast::bind_front_handler(&WebSocketSession::on_close, shared_from_this()));
+        ws_.async_close(websocket::close_code::normal,
+                        beast::bind_front_handler(&WebSocketSession::on_close,
+                                                  shared_from_this()));
     }
 
     void on_close(beast::error_code ec) {
@@ -79,14 +93,16 @@ private:
 
 // This function handles the accepting of new connections
 class WebSocketServer {
-public:
-    WebSocketServer(net::io_context& ioc, unsigned short port) : acceptor_(ioc, tcp::endpoint(tcp::v4(), port)) {
+  public:
+    WebSocketServer(net::io_context &ioc, unsigned short port)
+        : acceptor_(ioc, tcp::endpoint(tcp::v4(), port)) {
         do_accept();
     }
 
-private:
+  private:
     void do_accept() {
-        acceptor_.async_accept([this](beast::error_code ec, tcp::socket socket) {
+        acceptor_.async_accept([this](beast::error_code ec,
+                                      tcp::socket socket) {
             if (!ec) {
                 std::make_shared<WebSocketSession>(std::move(socket))->run();
             }
@@ -97,7 +113,7 @@ private:
     tcp::acceptor acceptor_;
 };
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     try {
         // Check command-line arguments
         if (argc != 2) {
@@ -112,7 +128,7 @@ int main(int argc, char* argv[]) {
         // Create and run the server
         WebSocketServer server(ioc, port);
         ioc.run();
-    } catch (std::exception const& e) {
+    } catch (std::exception const &e) {
         std::cerr << "Error: " << e.what() << std::endl;
         return EXIT_FAILURE;
     }
