@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    uWS::App()
+    uWS::SSLApp()
         // Register GET Request Handler
         .get("/*",
              [port](auto *res, auto * /*req*/) {
