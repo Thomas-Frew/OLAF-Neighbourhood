@@ -18,17 +18,13 @@ int main(int argc, char** argv)
     try {
         // Default settings
         std::string host = "localhost";
-        std::string text;
         std::string port = "1443";
 
         // Port is customisable
         if (argc == 2) {
-            text = argv[1];
-        } else if (argc == 3) {
             port = argv[1];
-            text = argv[2];
-        } else {
-            std::cerr << "Usage: client <port>? <text>\n Example: client 1443 Hello World!\n";
+        } else if (argc != 1) {
+            std::cerr << "Usage: client <port>?\n";
             return EXIT_FAILURE;
         }
 
@@ -60,22 +56,32 @@ int main(int argc, char** argv)
         // Perform the websocket handshake
         ws.handshake(host, "/");
 
-        // Send the message
-        ws.write(net::buffer(std::string(text)));
+        std::string input;
+        auto prompt = [&input]() {
+            std::cout << "[CLIENT]: " << std::flush;
+            std::getline(std::cin, input);
+        };
 
-        // This buffer will hold the incoming message
-        beast::flat_buffer buffer;
+        // Send/receive messages from server until client quits
+        for (prompt(); input != "/quit"; prompt()) {
+            // Send the message
+            ws.write(net::buffer(std::string(input)));
 
-        // Read a message into our buffer
-        ws.read(buffer);
+            // This buffer will hold the incoming message
+            beast::flat_buffer buffer;
+
+            // Read a message into our buffer
+            ws.read(buffer);
+
+            // The make_printable() function helps print a ConstBufferSequence
+            std::cout << beast::make_printable(buffer.data()) << std::endl;
+        }
 
         // Close the WebSocket connection
         ws.close(websocket::close_code::normal);
 
         // If we get here then the connection is closed gracefully
 
-        // The make_printable() function helps print a ConstBufferSequence
-        std::cout << beast::make_printable(buffer.data()) << std::endl;
     } catch (std::exception const& e) {
         std::cerr << "Error: " << e.what() << std::endl;
         return EXIT_FAILURE;
