@@ -16,16 +16,21 @@ using tcp = boost::asio::ip::tcp;
 int main(int argc, char** argv)
 {
     try {
-        // Check command line arguments.
-        if (argc != 4) {
-            std::cerr << "Usage: websocket-client-sync <host> <port> <text>\n"
-                      << "Example:\n"
-                      << "    websocket-client-sync echo.websocket.org 80 \"Hello, world!\"\n";
+        // Default settings
+        std::string host = "localhost";
+        std::string text;
+        std::string port = "1443";
+
+        // Port is customisable
+        if (argc == 2) {
+            text = argv[1];
+        } else if (argc == 3) {
+            port = argv[1];
+            text = argv[2];
+        } else {
+            std::cerr << "Usage: client <port>? <text>\n Example: client 1443 Hello World!\n";
             return EXIT_FAILURE;
         }
-        std::string host = argv[1];
-        auto const port = argv[2];
-        auto const text = argv[3];
 
         // The io_context is required for all I/O
         net::io_context ioc;
@@ -43,7 +48,7 @@ int main(int argc, char** argv)
         // Update the host_ string. This will provide the value of the
         // Host HTTP header during the WebSocket handshake.
         // See https://tools.ietf.org/html/rfc7230#section-5.4
-        host += ':' + std::to_string(ep.port());
+        host += ':' + ep.port();
 
         // Set a decorator to change the User-Agent of the handshake
         ws.set_option(websocket::stream_base::decorator(

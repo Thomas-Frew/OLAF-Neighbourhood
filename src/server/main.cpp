@@ -5,9 +5,19 @@
 // Per-socket data members
 struct SocketData { };
 
-int main()
+int main(int argc, char** argv)
 {
-    int port = std::getenv("SERVER_PORT") ? std::stoi(std::getenv("SERVER_PORT")) : 3000;
+    // Default settings
+    std::string host = "localhost";
+    int port = 1443;
+
+    // Port is customisable
+    if (argc == 2) {
+        port = std::stoi(argv[1]);
+    } else if (argc > 2) {
+        std::cerr << "Usage: websocket-client-sync <port>\n Example: server 443\n";
+        return EXIT_FAILURE;
+    }
 
     uWS::App()
         // Register GET Request Handler
