@@ -33,3 +33,7 @@
 
 # Build dir
 build/*
+.cache/*
+
+# LSP stuff
+compile_commands.json
