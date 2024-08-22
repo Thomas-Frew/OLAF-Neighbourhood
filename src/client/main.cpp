@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include <thread>
 
 namespace beast = boost::beast;
 namespace http = beast::http;
@@ -87,31 +88,47 @@ int main(int argc, char **argv) {
         // Perform the websocket handshake
         ws.handshake(host, "/");
 
-        std::string input;
-        auto prompt = [&input]() {
-            std::cout << "[CLIENT]: " << std::flush;
-            std::getline(std::cin, input);
-        };
+        // Print output while its available
+        bool running = true;
+        std::thread output_thread([&ws, &running]() {
+            try {
+                while (running) {
+                    // This buffer will hold the incoming message
+                    beast::flat_buffer buffer;
 
+                    // Read a message into our buffer
+                    ws.read(buffer);
+
+                    // The make_printable() function helps print a
+                    // ConstBufferSequence
+                    std::cout << "[SERVER] "
+                              << beast::make_printable(buffer.data())
+                              << std::endl;
+                }
+            } catch (std::exception const &e) {
+                if (!running) {
+                    // graceful shutdown, do nothing
+                } else {
+                    std::cerr << "Error in output thread: " << e.what()
+                              << std::endl;
+                }
+            }
+        });
+
+        std::string input;
+        auto prompt = [&input]() { std::getline(std::cin, input); };
         // Send/receive messages from server until client quits
         for (prompt(); input != "/quit"; prompt()) {
             // Send the message
             ws.write(net::buffer(std::string(input)));
-
-            // This buffer will hold the incoming message
-            beast::flat_buffer buffer;
-
-            // Read a message into our buffer
-            ws.read(buffer);
-
-            // The make_printable() function helps print a ConstBufferSequence
-            std::cout << beast::make_printable(buffer.data()) << std::endl;
         }
 
         // Close the WebSocket connection
+        running = false;
         ws.close(websocket::close_code::normal);
 
         // If we get here then the connection is closed gracefully
+        output_thread.join();
 
     } catch (std::exception const &e) {
         std::cerr << "Error: " << e.what() << std::endl;

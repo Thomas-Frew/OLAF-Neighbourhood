@@ -36,13 +36,10 @@ int main(int argc, char **argv) {
                  [](auto *ws) {
                      ws->subscribe("chat");
                      std::cout << "WebSocket connection opened" << std::endl;
+                     ws->send("Connection established.", uWS::OpCode::TEXT);
                  },
              .message =
                  [](auto *ws, std::string_view message, uWS::OpCode opCode) {
-                     std::string response =
-                         "I love you, thanks for your message: " +
-                         std::string(message);
-                     ws->send(response, opCode);
                      ws->publish("chat", message);
                  },
              .close =
