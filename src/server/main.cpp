@@ -19,20 +19,22 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    uWS::SSLApp({
-                    .key_file_name = "ssl/server.key",
-                    .cert_file_name = "ssl/server.cert",
-                })
+    uWS::SSLApp app({
+        .key_file_name = "ssl/server.key",
+        .cert_file_name = "ssl/server.cert",
+    });
+    app
         // Register GET Request Handler
         .get("/*",
              [port](auto *res, auto * /*req*/) {
                  res->end("Response to any GET request.");
              })
-        // Register WebSocket Message Recieved Hanlder (any route)
+        // Register WebSocket Message Recieved Handler (any route)
         .ws<SocketData>(
             "/*",
             {.open =
                  [](auto *ws) {
+                     ws->subscribe("chat");
                      std::cout << "WebSocket connection opened" << std::endl;
                  },
              .message =
@@ -41,6 +43,7 @@ int main(int argc, char **argv) {
                          "I love you, thanks for your message: " +
                          std::string(message);
                      ws->send(response, opCode);
+                     ws->publish("chat", message);
                  },
              .close =
                  [](auto *ws, int code, std::string_view message) {
