@@ -1,7 +1,8 @@
 add_executable(client main.cpp)
 
 find_package(Threads REQUIRED)
-target_link_libraries(client PRIVATE Threads::Threads)
+find_package(OpenSSL REQUIRED)
+target_link_libraries(client PRIVATE Threads::Threads OpenSSL::SSL OpenSSL::Crypto)
 
 # Clang-Format
 add_custom_command(

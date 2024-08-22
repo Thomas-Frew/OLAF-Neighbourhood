@@ -1,7 +1,9 @@
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/ssl.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/websocket.hpp>
+#include <boost/beast/websocket/ssl.hpp>
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -10,7 +12,8 @@ namespace beast = boost::beast;
 namespace http = beast::http;
 namespace websocket = beast::websocket;
 namespace net = boost::asio;
-using tcp = boost::asio::ip::tcp;
+namespace ssl = net::ssl;
+using tcp = net::ip::tcp;
 
 // Sends a WebSocket message and prints the response
 int main(int argc, char **argv) {
@@ -32,18 +35,22 @@ int main(int argc, char **argv) {
 
         // These objects perform our I/O
         tcp::resolver resolver{ioc};
-        websocket::stream<tcp::socket> ws{ioc};
+        ssl::context ctx{ssl::context::tlsv13_client};
+        websocket::stream<ssl::stream<tcp::socket>> ws{ioc, ctx};
 
         // Look up the domain name
         auto const results = resolver.resolve(host, port);
 
         // Make the connection on the IP address we get from a lookup
-        auto ep = net::connect(ws.next_layer(), results);
+        auto ep = net::connect(ws.next_layer().next_layer(), results);
 
         // Update the host_ string. This will provide the value of the
         // Host HTTP header during the WebSocket handshake.
         // See https://tools.ietf.org/html/rfc7230#section-5.4
         host += ':' + ep.port();
+
+        // Perform ssl handshake
+        ws.next_layer().handshake(ssl::stream_base::client);
 
         // Set a decorator to change the User-Agent of the handshake
         ws.set_option(
