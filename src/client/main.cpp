@@ -38,6 +38,15 @@ int main(int argc, char **argv) {
         ssl::context ctx{ssl::context::tlsv13_client};
         websocket::stream<ssl::stream<tcp::socket>> ws{ioc, ctx};
 
+        // Set SNI (Server Name Indication) for the SSL handshake,
+        // required for many HTTPS servers
+        if (!SSL_set_tlsext_host_name(ws.next_layer().native_handle(),
+                                      host.c_str())) {
+            boost::system::error_code ec{static_cast<int>(::ERR_get_error()),
+                                         net::error::get_ssl_category()};
+            throw boost::system::system_error{ec};
+        }
+
         // Look up the domain name
         auto const results = resolver.resolve(host, port);
 
