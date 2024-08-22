@@ -33,9 +33,24 @@ int main(int argc, char **argv) {
         // The io_context is required for all I/O
         net::io_context ioc;
 
+        // Context for SSL signing
+        ssl::context ctx{ssl::context::tlsv13_client};
+        // Disable old/insecure versions of TLS/SSL
+        ctx.set_options(ssl::context::default_workarounds |
+                        ssl::context::single_dh_use | ssl::context::no_sslv2 |
+                        ssl::context::no_sslv3 | ssl::context::no_tlsv1 |
+                        ssl::context::no_tlsv1_1);
+        // Sign with CA
+        ctx.set_verify_mode(ssl::verify_peer);
+        ctx.set_default_verify_paths();
+        // Lets add our server's custom certificate to the approved list
+        ctx.load_verify_file("ssl/server.cert");
+        // Disbale compression - can lead to vulnerabilities
+        SSL_CTX_set_options(ctx.native_handle(), SSL_OP_NO_COMPRESSION);
+        // Might want to add a SSL_CTX_set_cipher_list...
+
         // These objects perform our I/O
         tcp::resolver resolver{ioc};
-        ssl::context ctx{ssl::context::tlsv13_client};
         websocket::stream<ssl::stream<tcp::socket>> ws{ioc, ctx};
 
         // Set SNI (Server Name Indication) for the SSL handshake,
