@@ -25,9 +25,7 @@ int main(int argc, char **argv) {
     std::thread output_thread([&conn, &running]() {
         try {
             while (running) {
-                auto fut = conn.read();
-                std::println("Read message, waiting on future.");
-                auto message = fut.get();
+                auto message = conn.read();
                 std::println("[SERVER]: {}", message);
             }
         } catch (std::exception const &e) {

@@ -4,7 +4,6 @@
 #include <boost/beast/core.hpp>
 #include <boost/beast/websocket.hpp>
 #include <boost/beast/websocket/ssl.hpp>
-#include <future>
 #include <iostream>
 #include <string>
 
@@ -18,7 +17,7 @@ using tcp = net::ip::tcp;
 // Create connection
 Connection::Connection(std::string host, std::string_view port)
     : m_ioc(), m_ctx(ssl::context::tlsv13_client), m_resolver(m_ioc),
-      m_ws(m_ioc, m_ctx), m_graceful_shutdown(false) {
+      m_ws(m_ioc, m_ctx), m_state(ConnState::CONNECTED) {
     // Disable old + insecure verisons of TLS/SSL
     this->m_ctx.set_options(ssl::context::default_workarounds |
                             ssl::context::single_dh_use |
@@ -71,48 +70,33 @@ Connection::Connection(std::string host, std::string_view port)
 
     // Perform the websocket handshake
     this->m_ws.handshake(host, "/");
-
-    // Set up IO thread
-    this->m_io_worker = std::thread([this]() {
-        std::println(std::cerr, "IOC running.");
-        this->m_ioc.run();
-    });
 };
 
-// Read message (blocks on I/O)
-auto Connection::read() -> std::future<std::string> {
+auto Connection::read() -> std::string {
     // Shared pointers so they don't get destroyed upon returning
-    auto promise = std::make_shared<std::promise<std::string>>();
-    auto buffer = std::make_shared<beast::flat_buffer>();
-    this->m_ws.async_read(
-        *buffer, [buffer, promise](beast::error_code ec, std::size_t) {
-            if (!ec) {
-                promise->set_value(beast::buffers_to_string(buffer->data()));
-            } else {
-                promise->set_exception(
-                    std::make_exception_ptr(std::runtime_error(ec.message())));
-            }
-        });
-    return promise->get_future();
+    auto buffer = beast::flat_buffer();
+    this->m_ws.read(buffer);
+    return beast::buffers_to_string(buffer.data());
 }
 
-// Send message
 auto Connection::write(std::string_view message) -> void {
     this->m_ws.write(net::buffer(message));
 };
 
-auto Connection::close() -> void
+auto Connection::close() -> void {
+    if (this->m_state == ConnState::SHUTDOWN) {
+        throw std::runtime_error("Closing already closed connection");
+    }
 
-{
     std::println(std::cerr, "Closing connection...");
     this->m_ws.close(websocket::close_code::normal);
-    std::println(std::cerr, "Joining ioc worker...");
-    this->m_io_worker.join();
+
     std::println(std::cerr, "Gracefully shutdown!");
-    this->m_graceful_shutdown = true;
+    this->m_state = ConnState::SHUTDOWN;
 }
+
 Connection::~Connection() {
-    if (this->m_graceful_shutdown == false) {
+    if (this->m_state != ConnState::SHUTDOWN) {
         this->close();
         std::println(std::cerr, "Warning: Connection destroyed without being "
                                 "automatically closed. Closed automatically.");

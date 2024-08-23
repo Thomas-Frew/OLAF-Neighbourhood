@@ -2,9 +2,7 @@
 #include <boost/asio/ssl.hpp>
 #include <boost/beast/websocket.hpp>
 #include <boost/beast/websocket/ssl.hpp>
-#include <future>
 #include <string>
-#include <thread>
 
 class Connection {
   public:
@@ -17,7 +15,7 @@ class Connection {
     Connection operator=(Connection &) = delete;
     Connection operator=(Connection &&) = delete;
 
-    std::future<std::string> read();
+    std::string read();
     void write(std::string_view message);
     void close();
 
@@ -29,6 +27,6 @@ class Connection {
         boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>
         m_ws;
 
-    bool m_graceful_shutdown;
-    std::thread m_io_worker;
+    enum class ConnState : uint8_t { CONNECTED, SHUTDOWN };
+    ConnState m_state;
 };
