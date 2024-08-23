@@ -1,5 +1,6 @@
 #include "connection.hpp"
 #include <iostream>
+#include <print>
 #include <string>
 #include <thread>
 
@@ -13,7 +14,7 @@ int main(int argc, char **argv) {
     if (argc == 2) {
         port = argv[1];
     } else if (argc != 1) {
-        std::cerr << "Usage: client <port>?\n";
+        std::println(std::cerr, "Usage: client <port>?");
         return EXIT_FAILURE;
     }
 
@@ -24,15 +25,16 @@ int main(int argc, char **argv) {
     std::thread output_thread([&conn, &running]() {
         try {
             while (running) {
-                auto message = conn.read().get();
-                std::cout << "[SERVER] " << message << std::endl;
+                auto fut = conn.read();
+                std::println("Read message, waiting on future.");
+                auto message = fut.get();
+                std::println("[SERVER]: {}", message);
             }
         } catch (std::exception const &e) {
             if (!running) {
                 // graceful shutdown, do nothing
             } else {
-                std::cerr << "Error in output thread: " << e.what()
-                          << std::endl;
+                std::println(std::cerr, "Error in output thread: {}", e.what());
             }
         }
     });

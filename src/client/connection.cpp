@@ -73,7 +73,10 @@ Connection::Connection(std::string host, std::string_view port)
     this->m_ws.handshake(host, "/");
 
     // Set up IO thread
-    this->m_io_worker = std::thread([this]() { this->m_ioc.run(); });
+    this->m_io_worker = std::thread([this]() {
+        std::println(std::cerr, "IOC running.");
+        this->m_ioc.run();
+    });
 };
 
 // Read message (blocks on I/O)
@@ -101,18 +104,17 @@ auto Connection::write(std::string_view message) -> void {
 auto Connection::close() -> void
 
 {
-    std::cerr << "Closing connection..." << std::endl;
+    std::println(std::cerr, "Closing connection...");
     this->m_ws.close(websocket::close_code::normal);
-    std::cerr << "Joining working thread..." << std::endl;
+    std::println(std::cerr, "Joining ioc worker...");
     this->m_io_worker.join();
-    std::cerr << "Gracefully shutdown!" << std::endl;
+    std::println(std::cerr, "Gracefully shutdown!");
     this->m_graceful_shutdown = true;
 }
 Connection::~Connection() {
     if (this->m_graceful_shutdown == false) {
         this->close();
-        std::cerr << "Warning: Connection destroyed without being "
-                     "automatically closed. Closed automatically."
-                  << std::endl;
+        std::println(std::cerr, "Warning: Connection destroyed without being "
+                                "automatically closed. Closed automatically.");
     }
 }
