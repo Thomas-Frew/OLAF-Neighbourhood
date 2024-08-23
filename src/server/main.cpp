@@ -19,7 +19,10 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    uWS::App()
+    uWS::SSLApp({
+                    .key_file_name = "ssl/server.key",
+                    .cert_file_name = "ssl/server.cert",
+                })
         // Register GET Request Handler
         .get("/*",
              [port](auto *res, auto * /*req*/) {

@@ -9,7 +9,11 @@ FetchContent_Declare(
   GIT_SUBMODULES ""
 )
 FetchContent_MakeAvailable(uSockets_content)
-file(GLOB_RECURSE SOURCES ${usockets_content_SOURCE_DIR}/src/*.c)
+file(GLOB_RECURSE SOURCES ${usockets_content_SOURCE_DIR}/src/*.c ${usockets_content_SOURCE_DIR}/src/*cpp)
+find_package(OpenSSL REQUIRED)
 add_library(uSockets ${SOURCES})
 target_include_directories(uSockets PUBLIC ${usockets_content_SOURCE_DIR}/src)
-target_compile_definitions(uSockets PRIVATE LIBUS_NO_SSL)
+target_compile_definitions(uSockets PRIVATE LIBUS_USE_OPENSSL)
+
+target_link_libraries(uSockets ${OPENSSL_LIBRARIES} ${ZLIB_LIBRARIES})
+target_include_directories(uSockets PUBLIC ${USOCKETS_DIR} ${OPENSSL_INCLUDE_DIR} ${ZLIB_INCLUDE_DIRS})

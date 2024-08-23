@@ -1,7 +1,9 @@
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/ssl.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/websocket.hpp>
+#include <boost/beast/websocket/ssl.hpp>
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -10,7 +12,8 @@ namespace beast = boost::beast;
 namespace http = beast::http;
 namespace websocket = beast::websocket;
 namespace net = boost::asio;
-using tcp = boost::asio::ip::tcp;
+namespace ssl = net::ssl;
+using tcp = net::ip::tcp;
 
 // Sends a WebSocket message and prints the response
 int main(int argc, char **argv) {
@@ -30,20 +33,48 @@ int main(int argc, char **argv) {
         // The io_context is required for all I/O
         net::io_context ioc;
 
+        // Context for SSL signing
+        ssl::context ctx{ssl::context::tlsv13_client};
+        // Disable old/insecure versions of TLS/SSL
+        ctx.set_options(ssl::context::default_workarounds |
+                        ssl::context::single_dh_use | ssl::context::no_sslv2 |
+                        ssl::context::no_sslv3 | ssl::context::no_tlsv1 |
+                        ssl::context::no_tlsv1_1);
+        // Sign with CA
+        ctx.set_verify_mode(ssl::verify_peer);
+        ctx.set_default_verify_paths();
+        // Lets add our server's custom certificate to the approved list
+        ctx.load_verify_file("ssl/server.cert");
+        // Disbale compression - can lead to vulnerabilities
+        SSL_CTX_set_options(ctx.native_handle(), SSL_OP_NO_COMPRESSION);
+        // Might want to add a SSL_CTX_set_cipher_list...
+
         // These objects perform our I/O
         tcp::resolver resolver{ioc};
-        websocket::stream<tcp::socket> ws{ioc};
+        websocket::stream<ssl::stream<tcp::socket>> ws{ioc, ctx};
+
+        // Set SNI (Server Name Indication) for the SSL handshake,
+        // required for many HTTPS servers
+        if (!SSL_set_tlsext_host_name(ws.next_layer().native_handle(),
+                                      host.c_str())) {
+            boost::system::error_code ec{static_cast<int>(::ERR_get_error()),
+                                         net::error::get_ssl_category()};
+            throw boost::system::system_error{ec};
+        }
 
         // Look up the domain name
         auto const results = resolver.resolve(host, port);
 
         // Make the connection on the IP address we get from a lookup
-        auto ep = net::connect(ws.next_layer(), results);
+        auto ep = net::connect(ws.next_layer().next_layer(), results);
 
         // Update the host_ string. This will provide the value of the
         // Host HTTP header during the WebSocket handshake.
         // See https://tools.ietf.org/html/rfc7230#section-5.4
         host += ':' + ep.port();
+
+        // Perform ssl handshake
+        ws.next_layer().handshake(ssl::stream_base::client);
 
         // Set a decorator to change the User-Agent of the handshake
         ws.set_option(
