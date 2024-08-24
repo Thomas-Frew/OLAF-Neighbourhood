@@ -40,6 +40,8 @@ int main(int argc, char **argv) {
                  },
              .message =
                  [](auto *ws, std::string_view message, uWS::OpCode opCode) {
+                     std::cout << "Recieved chat message: " << message
+                               << std::endl;
                      ws->publish("chat", message);
                  },
              .close =

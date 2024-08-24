@@ -1,4 +1,4 @@
-add_executable(client main.cpp)
+add_executable(client main.cpp connection.cpp)
 
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
