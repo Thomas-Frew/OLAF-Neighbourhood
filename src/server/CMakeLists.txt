@@ -1,5 +1,5 @@
 include_directories("../messages")
-add_executable(server main.cpp ../messages/messages.cpp)
+add_executable(server main.cpp ../messages/messages.cpp server.cpp)
 
 add_compile_options(-luWS -lssl -lcrypto -lz -lpthread)
 target_link_libraries(server PRIVATE uWebSockets)
