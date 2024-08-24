@@ -32,7 +32,7 @@ int main() {
     std::cout << "Packed JSON: " << j.dump(4) << std::endl;
 
     Message deserialized_message = Message::from_json(j);
-    
+
     std::cout << "Unpacked Message Type: "
               << static_cast<uint8_t>(deserialized_message.message_type)
               << std::endl;
