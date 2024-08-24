@@ -6,5 +6,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 add_subdirectory(server)
 add_subdirectory(client)
+add_subdirectory(messages)
 
 add_compile_options(-Wall -Wall -Wextra -Wpedantic -Wconversion)
