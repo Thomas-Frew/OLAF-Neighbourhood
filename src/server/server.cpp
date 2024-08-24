@@ -46,6 +46,36 @@ bool Server::removeUser(UserID user_id) {
     return true;
 }
 
+void Server::handleMessage(std::string_view message) {
+    nlohmann::json message_json = nlohmann::json::parse(message);
+    Message deserialized_message = Message::from_json(message_json);
+
+    MessageType message_type = static_cast<MessageType>(
+        static_cast<uint16_t>(deserialized_message.m_message_type));
+
+    switch (message_type) {
+    case MessageType::HELLO: {
+        std::string public_key =
+            static_cast<HelloData *>(deserialized_message.m_data.get())
+                ->m_public_key;
+        bool result = this->addUser(UserID(public_key));
+
+        if (!result) {
+            std::cerr << "User " << public_key << " is already online.";
+        }
+
+        // Debug
+        printOnlineUsers();
+        break;
+    }
+
+    default: {
+        std::cerr << "Unrecognised message type";
+        break;
+    }
+    }
+}
+
 void Server::run() {
 
     uWS::SSLApp app({
@@ -69,40 +99,7 @@ void Server::run() {
                  },
              .message =
                  [this](auto *ws, std::string_view message,
-                        uWS::OpCode opCode) {
-                     nlohmann::json message_json =
-                         nlohmann::json::parse(message);
-                     Message deserialized_message =
-                         Message::from_json(message_json);
-
-                     MessageType message_type =
-                         static_cast<MessageType>(static_cast<uint16_t>(
-                             deserialized_message.m_message_type));
-
-                     switch (message_type) {
-                     case MessageType::HELLO: {
-                         std::string public_key =
-                             static_cast<HelloData *>(
-                                 deserialized_message.m_data.get())
-                                 ->m_public_key;
-                         bool result = this->addUser(UserID(public_key));
-
-                         if (!result) {
-                             std::cerr << "User " << public_key
-                                       << " is already online.";
-                         }
-
-                         // Debug
-                         printOnlineUsers();
-                         break;
-                     }
-
-                     default: {
-                         std::cerr << "Unrecognised message type";
-                         break;
-                     }
-                     }
-                 },
+                        uWS::OpCode opCode) { this->handleMessage(message); },
              .close =
                  [](auto *ws, int code, std::string_view message) {
                      std::cout

@@ -24,16 +24,20 @@ namespace std {
 class Server {
 public:
     Server(uint16_t port): m_port(port) {}
+    void run();
 
+private:
     // Debug
     void printRecievedMessage(std::string_view message);
     void printOnlineUsers();
 
+    // User management
     bool addUser(UserID user_id);
     bool removeUser(UserID user_id);
-    void run();
 
-private:
+    // Messge handling
+    void handleMessage(std::string_view message);
+    
     std::uint16_t m_port;
     std::unordered_set<UserID> m_online_users;
 
