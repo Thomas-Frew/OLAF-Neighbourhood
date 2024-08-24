@@ -95,6 +95,8 @@ auto Connection::close() -> void {
 Connection::~Connection() {
     if (this->m_state != ConnState::SHUTDOWN) {
         this->close();
-        std::cerr << "Warning: Connection destroyed without being automatically closed. Closed automatically." << '\n';
+        std::cerr << "Warning: Connection destroyed without being "
+                     "automatically closed. Closed automatically."
+                  << '\n';
     }
 }
