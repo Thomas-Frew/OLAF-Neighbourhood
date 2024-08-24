@@ -1,47 +1,8 @@
 #include "connection.hpp"
-#include "messages.hpp"
 #include <iostream>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <thread>
-
-void cli(Connection &connection) {
-
-    for (;;) {
-
-        std::string input;
-        std::getline(std::cin, input);
-
-        std::stringstream input_stream(input);
-
-        std::string command;
-        input_stream >> command;
-
-        if (command == "hello") {
-
-            std::string public_key;
-            input_stream >> public_key;
-
-            uint32_t counter;
-            input_stream >> counter;
-
-            std::string signature;
-            input_stream >> signature;
-
-            auto message_data = std::make_unique<HelloData>();
-            message_data->m_public_key = public_key;
-
-            Message message{MessageType::HELLO, std::move(message_data),
-                            counter, signature};
-
-            nlohmann::json message_json = message.to_json();
-            connection.write(message_json.dump(4));
-
-        } else if (command == "quit") {
-
-            return;
-        }
-    }
-}
 
 // Sends a WebSocket message and prints the response
 int main(int argc, char **argv) {
@@ -77,8 +38,13 @@ int main(int argc, char **argv) {
         }
     });
 
-    // Begin the CLI
-    cli(conn);
+    std::string input;
+    auto prompt = [&input]() { std::getline(std::cin, input); };
+    // Send/receive messages from server until client quits
+    for (prompt(); input != "/quit"; prompt()) {
+        // Send the message
+        conn.write(input);
+    }
 
     // Close the WebSocket connection
     running = false;
