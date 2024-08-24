@@ -1,5 +1,5 @@
 include_directories("../messages")
-add_executable(client main.cpp connection.cpp ../messages/messages.cpp)
+add_executable(client main.cpp connection.cpp client.cpp ../messages/messages.cpp)
 
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)

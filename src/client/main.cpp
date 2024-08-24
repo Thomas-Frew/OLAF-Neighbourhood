@@ -1,10 +1,11 @@
+#include "client.hpp"
 #include "connection.hpp"
 #include "messages.hpp"
 #include <iostream>
 #include <string>
 #include <thread>
 
-void cli(Connection &connection) {
+void cli(Connection &&connection, Client &&client) {
 
     for (;;) {
 
@@ -18,26 +19,17 @@ void cli(Connection &connection) {
 
         if (command == "hello") {
 
-            std::string public_key;
-            input_stream >> public_key;
-
-            uint32_t counter;
-            input_stream >> counter;
-
-            std::string signature;
-            input_stream >> signature;
-
             auto message_data = std::make_unique<HelloData>();
-            message_data->m_public_key = public_key;
+            message_data->m_public_key = client.getPublicKey();
 
             Message message{MessageType::HELLO, std::move(message_data),
-                            counter, signature};
+                            client.getCounter(), "temp_signature"};
 
             nlohmann::json message_json = message.to_json();
             connection.write(message_json.dump(4));
 
         } else if (command == "public_chat") {
-            
+
             // TODO: Implement public chat handler
 
         } else if (command == "quit") {
@@ -52,12 +44,17 @@ int main(int argc, char **argv) {
     // Default settings
     std::string host = "localhost";
     std::string port = "1443";
+    std::string public_key = "default";
 
     // Port is customisable
-    if (argc == 2) {
+    if (argc > 1) {
         port = argv[1];
-    } else if (argc != 1) {
-        std::cerr << "Usage: client <port>?" << std::endl;
+    }
+    if (argc > 2) {
+        public_key = argv[2];
+    }
+    if (argc > 3) {
+        std::cerr << "Usage: client <port>? <public_key>?" << std::endl;
         return EXIT_FAILURE;
     }
 
@@ -81,8 +78,11 @@ int main(int argc, char **argv) {
         }
     });
 
-    // Begin the CLI
-    cli(conn);
+    // Create a client
+    Client client(public_key);
+
+    // Begin the command-line interface
+    cli(std::move(conn), std::move(client));
 
     // Close the WebSocket connection
     running = false;

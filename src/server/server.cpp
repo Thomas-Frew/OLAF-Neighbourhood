@@ -61,7 +61,7 @@ void Server::handleMessage(std::string_view message) {
         bool result = this->addUser(UserID(public_key));
 
         if (!result) {
-            std::cerr << "User " << public_key << " is already online.";
+            std::cerr << "User " << public_key << " is already online." << std::endl;
         }
 
         // Debug
