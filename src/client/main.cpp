@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
     if (argc == 2) {
         port = argv[1];
     } else if (argc != 1) {
-        std::cerr << "Usage: client <port>?" << '\n';
+        std::cerr << "Usage: client <port>?" << std::endl;
         return EXIT_FAILURE;
     }
 
@@ -25,13 +25,14 @@ int main(int argc, char **argv) {
         try {
             while (running) {
                 auto message = conn.read();
-                std::cout << "[SERVER]: " << message << '\n';
+                std::cout << "[SERVER]: " << message << std::endl;
             }
         } catch (std::exception const &e) {
             if (!running) {
                 // graceful shutdown, do nothing
             } else {
-                std::cerr << "Error in output thread: {}" << '\n';
+                std::cerr << "Error in output thread: " << e.what()
+                          << std::endl;
             }
         }
     });

@@ -85,16 +85,21 @@ auto Connection::close() -> void {
         throw std::runtime_error("Closing already closed connection");
     }
 
-    std::cerr << "Closing connection..." << '\n';
+    std::cerr << "Closing websocket..." << std::endl;
     this->m_ws.close(websocket::close_code::normal);
 
-    std::cerr << "Gracefully shutdown!" << '\n';
+    std::cerr << "Shutting down connection..." << std::endl;
+    this->m_ws.next_layer().shutdown();
+
+    std::cerr << "Gracefully shutdown!" << std::endl;
     this->m_state = ConnState::SHUTDOWN;
 }
 
 Connection::~Connection() {
     if (this->m_state != ConnState::SHUTDOWN) {
         this->close();
-        std::cerr << "Warning: Connection destroyed without being automatically closed. Closed automatically." << '\n';
+        std::cerr << "Warning: Connection destroyed without being "
+                     "automatically closed. Closed automatically."
+                  << std::endl;
     }
 }
