@@ -9,6 +9,14 @@ nlohmann::json HelloData::to_json() {
     return j;
 }
 
+nlohmann::json PublicChatData::to_json() {
+    nlohmann::json j;
+    j["type"] = static_cast<uint8_t>(type());
+    j["public_key"] = m_public_key;
+    j["message"] = m_message;
+    return j;
+}
+
 nlohmann::json Message::to_json() {
     nlohmann::json j;
     j["message_type"] = static_cast<uint8_t>(m_message_type);

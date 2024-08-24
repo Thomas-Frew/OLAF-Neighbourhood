@@ -69,6 +69,10 @@ void Server::handleMessage(std::string_view message) {
         break;
     }
 
+    case MessageType::PUBLIC_CHAT:
+
+        break;
+
     default: {
         std::cerr << "Unrecognised message type";
         break;
