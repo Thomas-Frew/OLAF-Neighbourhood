@@ -7,6 +7,17 @@
 
 void cli(Connection &&connection, Client &&client) {
 
+    {
+        auto message_data = std::make_unique<HelloData>();
+        message_data->m_public_key = client.getPublicKey();
+
+        Message message{MessageType::HELLO, std::move(message_data),
+                        client.getCounter(), "temp_signature"};
+
+        nlohmann::json message_json = message.to_json();
+        connection.write(message_json.dump(4));
+    }
+
     for (;;) {
 
         std::string input;
@@ -17,20 +28,21 @@ void cli(Connection &&connection, Client &&client) {
         std::string command;
         input_stream >> command;
 
-        if (command == "hello") {
+        if (command == "public_chat") {
 
-            auto message_data = std::make_unique<HelloData>();
+            std::string text;
+            std::getline(input_stream, text);
+            text = text.substr(1); // Trim leading whitespace
+
+            auto message_data = std::make_unique<PublicChatData>();
             message_data->m_public_key = client.getPublicKey();
+            message_data->m_message = text;
 
-            Message message{MessageType::HELLO, std::move(message_data),
+            Message message{MessageType::PUBLIC_CHAT, std::move(message_data),
                             client.getCounter(), "temp_signature"};
 
             nlohmann::json message_json = message.to_json();
             connection.write(message_json.dump(4));
-
-        } else if (command == "public_chat") {
-
-            // TODO: Implement public chat handler
 
         } else if (command == "quit") {
 

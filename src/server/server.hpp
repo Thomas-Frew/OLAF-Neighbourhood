@@ -4,6 +4,9 @@
 #include <iostream>
 #include <unordered_set>
 
+// Per-socket data members
+struct SocketData {};
+
 struct UserID {
     std::string public_key;
 
@@ -36,7 +39,7 @@ private:
     bool removeUser(UserID user_id);
 
     // Messge handling
-    void handleMessage(std::string_view message);
+    void handleMessage(uWS::WebSocket<true, true, SocketData>* ws, std::string_view message);
     
     std::uint16_t m_port;
     std::unordered_set<UserID> m_online_users;

@@ -66,6 +66,9 @@ public:
             case MessageType::HELLO:
                 message.m_data = HelloData::from_json(j["data"]);
                 break;
+            case MessageType::PUBLIC_CHAT:
+                message.m_data = PublicChatData::from_json(j["data"]);
+                break;
             default:
                 throw std::runtime_error("Unknown MessageType");
         }

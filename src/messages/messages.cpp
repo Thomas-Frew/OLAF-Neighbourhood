@@ -1,6 +1,8 @@
 #include "messages.hpp"
 
 MessageType HelloData::type() { return MessageType::HELLO; }
+MessageType PublicChatData::type() { return MessageType::PUBLIC_CHAT; }
+
 
 nlohmann::json HelloData::to_json() {
     nlohmann::json j;

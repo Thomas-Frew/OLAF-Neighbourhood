@@ -1,8 +1,5 @@
 #include "server.hpp"
 
-// Per-socket data members
-struct SocketData {};
-
 // Debug
 void Server::printRecievedMessage(std::string_view message) {
     std::cout << "Recieved JSON message: " << message << std::endl;
@@ -46,7 +43,8 @@ bool Server::removeUser(UserID user_id) {
     return true;
 }
 
-void Server::handleMessage(std::string_view message) {
+void Server::handleMessage(uWS::WebSocket<true, true, SocketData> *ws,
+                           std::string_view message) {
     nlohmann::json message_json = nlohmann::json::parse(message);
     Message deserialized_message = Message::from_json(message_json);
 
@@ -61,7 +59,8 @@ void Server::handleMessage(std::string_view message) {
         bool result = this->addUser(UserID(public_key));
 
         if (!result) {
-            std::cerr << "User " << public_key << " is already online." << std::endl;
+            std::cerr << "User " << public_key << " is already online."
+                      << std::endl;
         }
 
         // Debug
@@ -69,9 +68,18 @@ void Server::handleMessage(std::string_view message) {
         break;
     }
 
-    case MessageType::PUBLIC_CHAT:
-        // TODO: Implement public chat handler
+    case MessageType::PUBLIC_CHAT: {
+        std::string public_key =
+            static_cast<PublicChatData *>(deserialized_message.m_data.get())
+                ->m_public_key;
+
+        std::string message =
+            static_cast<PublicChatData *>(deserialized_message.m_data.get())
+                ->m_message;
+
+        ws->publish("chat", message);
         break;
+    }
 
     default: {
         std::cerr << "Unrecognised message type";
@@ -103,7 +111,9 @@ void Server::run() {
                  },
              .message =
                  [this](auto *ws, std::string_view message,
-                        uWS::OpCode opCode) { this->handleMessage(message); },
+                        uWS::OpCode opCode) {
+                     this->handleMessage(ws, message);
+                 },
              .close =
                  [](auto *ws, int code, std::string_view message) {
                      std::cout
