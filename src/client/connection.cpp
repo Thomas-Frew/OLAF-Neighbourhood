@@ -57,9 +57,6 @@ Connection::Connection(std::string host, std::string_view port)
     // Perform ssl handshake
     this->m_ws.next_layer().handshake(ssl::stream_base::client);
 
-    // Perform ssl handshake
-    this->m_ws.next_layer().handshake(ssl::stream_base::client);
-
     // Set a decorator to change the User-Agent of the handshake
     this->m_ws.set_option(
         websocket::stream_base::decorator([](websocket::request_type &req) {
@@ -88,17 +85,16 @@ auto Connection::close() -> void {
         throw std::runtime_error("Closing already closed connection");
     }
 
-    std::println(std::cerr, "Closing connection...");
+    std::cerr << "Closing connection..." << '\n';
     this->m_ws.close(websocket::close_code::normal);
 
-    std::println(std::cerr, "Gracefully shutdown!");
+    std::cerr << "Gracefully shutdown!" << '\n';
     this->m_state = ConnState::SHUTDOWN;
 }
 
 Connection::~Connection() {
     if (this->m_state != ConnState::SHUTDOWN) {
         this->close();
-        std::println(std::cerr, "Warning: Connection destroyed without being "
-                                "automatically closed. Closed automatically.");
+        std::cerr << "Warning: Connection destroyed without being automatically closed. Closed automatically." << '\n';
     }
 }
