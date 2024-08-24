@@ -70,6 +70,7 @@ void Server::handleMessage(std::string_view message) {
     }
 
     case MessageType::PUBLIC_CHAT:
+        // TODO: Implement public chat handler
         break;
 
     default: {

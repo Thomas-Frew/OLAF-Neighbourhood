@@ -36,6 +36,10 @@ void cli(Connection &connection) {
             nlohmann::json message_json = message.to_json();
             connection.write(message_json.dump(4));
 
+        } else if (command == "public_chat") {
+            
+            // TODO: Implement public chat handler
+
         } else if (command == "quit") {
 
             return;
