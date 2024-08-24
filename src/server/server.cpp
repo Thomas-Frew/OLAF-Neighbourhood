@@ -3,6 +3,7 @@
 // Per-socket data members
 struct SocketData {};
 
+// Debug
 void Server::printRecievedMessage(std::string_view message) {
     std::cout << "Recieved JSON message: " << message << std::endl;
 
@@ -22,6 +23,27 @@ void Server::printRecievedMessage(std::string_view message) {
     std::cout << "Unpacked Signature: "
               << static_cast<std::string>(deserialized_message.m_signature)
               << std::endl;
+}
+
+void Server::printOnlineUsers() {
+    std::cout << "Online users: " << std::endl;
+    for (auto user_id : this->m_online_users) {
+        std::cout << "- " << user_id.public_key << std::endl;
+    }
+}
+
+bool Server::addUser(UserID user_id) {
+    if (this->m_online_users.contains(user_id))
+        return false;
+    this->m_online_users.insert(user_id);
+    return true;
+}
+
+bool Server::removeUser(UserID user_id) {
+    if (!this->m_online_users.contains(user_id))
+        return false;
+    this->m_online_users.erase(user_id);
+    return true;
 }
 
 void Server::run() {
@@ -48,7 +70,38 @@ void Server::run() {
              .message =
                  [this](auto *ws, std::string_view message,
                         uWS::OpCode opCode) {
-                     this->printRecievedMessage(message);
+                     nlohmann::json message_json =
+                         nlohmann::json::parse(message);
+                     Message deserialized_message =
+                         Message::from_json(message_json);
+
+                     MessageType message_type =
+                         static_cast<MessageType>(static_cast<uint16_t>(
+                             deserialized_message.m_message_type));
+
+                     switch (message_type) {
+                     case MessageType::HELLO: {
+                         std::string public_key =
+                             static_cast<HelloData *>(
+                                 deserialized_message.m_data.get())
+                                 ->m_public_key;
+                         bool result = this->addUser(UserID(public_key));
+
+                         if (!result) {
+                             std::cerr << "User " << public_key
+                                       << " is already online.";
+                         }
+
+                         // Debug
+                         printOnlineUsers();
+                         break;
+                     }
+
+                     default: {
+                         std::cerr << "Unrecognised message type";
+                         break;
+                     }
+                     }
                  },
              .close =
                  [](auto *ws, int code, std::string_view message) {
