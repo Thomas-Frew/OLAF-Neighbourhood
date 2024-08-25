@@ -1,5 +1,6 @@
 #include "connection.hpp"
 #include <iostream>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <thread>
 

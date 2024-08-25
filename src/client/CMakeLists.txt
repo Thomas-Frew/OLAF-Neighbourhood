@@ -3,6 +3,7 @@ add_executable(client main.cpp connection.cpp)
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
 target_link_libraries(client PRIVATE Threads::Threads OpenSSL::SSL OpenSSL::Crypto)
+target_link_libraries(client PRIVATE nlohmann_json::nlohmann_json)
 
 # Clang-Format
 add_custom_command(
