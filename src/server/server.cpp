@@ -89,10 +89,9 @@ void Server::handleMessage(uWS::WebSocket<true, true, SocketData> *ws,
 }
 
 void Server::run() {
-
     uWS::SSLApp app({
-        .key_file_name = "ssl/server.key",
-        .cert_file_name = "ssl/server.cert",
+        .key_file_name = "server/server.key",
+        .cert_file_name = "server/server.cert",
     });
     app
         // Register GET Request Handler

@@ -1,5 +1,7 @@
 include_directories(${CMAKE_SOURCE_DIR}/src/messages)
-add_executable(server main.cpp ${CMAKE_SOURCE_DIR}/src/messages/messages.cpp server.cpp)
+add_executable(server main.cpp server.cpp ${CMAKE_SOURCE_DIR}/src/messages/messages.cpp)
+
+set_target_properties(server PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/server")
 
 add_compile_options(-luWS -lssl -lcrypto -lz -lpthread)
 target_link_libraries(server PRIVATE uWebSockets)

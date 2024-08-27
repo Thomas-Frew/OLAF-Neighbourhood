@@ -1,5 +1,7 @@
 include_directories(${CMAKE_SOURCE_DIR}/src/messages)
-add_executable(client main.cpp connection.cpp client.cpp ${CMAKE_SOURCE_DIR}/src/messages)
+add_executable(client main.cpp connection.cpp client.cpp ${CMAKE_SOURCE_DIR}/src/messages/messages.cpp)
+
+set_target_properties(client PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/client")
 
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
