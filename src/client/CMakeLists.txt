@@ -1,5 +1,5 @@
-include_directories("../messages")
-add_executable(client main.cpp connection.cpp client.cpp ../messages/messages.cpp)
+include_directories(${CMAKE_SOURCE_DIR}/src/messages)
+add_executable(client main.cpp connection.cpp client.cpp ${CMAKE_SOURCE_DIR}/src/messages)
 
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)

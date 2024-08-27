@@ -45,7 +45,6 @@ void cli(Connection &&connection, Client &&client) {
             connection.write(message_json.dump(4));
 
         } else if (command == "quit") {
-
             return;
         }
     }
