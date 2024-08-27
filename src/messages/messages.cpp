@@ -1,11 +1,21 @@
 #include "messages.hpp"
 
 MessageType HelloData::type() { return MessageType::HELLO; }
+MessageType PublicChatData::type() { return MessageType::PUBLIC_CHAT; }
+
 
 nlohmann::json HelloData::to_json() {
     nlohmann::json j;
     j["type"] = static_cast<uint8_t>(type());
     j["public_key"] = m_public_key;
+    return j;
+}
+
+nlohmann::json PublicChatData::to_json() {
+    nlohmann::json j;
+    j["type"] = static_cast<uint8_t>(type());
+    j["public_key"] = m_public_key;
+    j["message"] = m_message;
     return j;
 }
 
@@ -18,7 +28,7 @@ nlohmann::json Message::to_json() {
     return j;
 }
 
-// Test
+/*
 int main() {
     auto hello_data = std::make_unique<HelloData>();
     hello_data->m_public_key = "my_public_key";
@@ -49,3 +59,4 @@ int main() {
 
     return 0;
 }
+*/

@@ -40,3 +40,8 @@ compile_commands.json
 
 # SSL
 ssl/*
+.vscode
+
+# Output dirs
+server/*
+client/*

@@ -5,7 +5,8 @@
 #include <stdexcept>
 
 enum class MessageType : uint8_t { 
-    HELLO
+    HELLO,
+    PUBLIC_CHAT,
 };
 
 class MessageData {
@@ -30,6 +31,23 @@ public:
     }
 };
 
+class PublicChatData : public MessageData {
+public:
+    std::string m_public_key;
+    std::string m_message;
+
+    MessageType type();
+    nlohmann::json to_json();
+
+    static std::unique_ptr<PublicChatData> from_json(const nlohmann::json& j) {
+        auto data = std::make_unique<PublicChatData>();
+        j["public_key"].get_to(data->m_public_key);
+        j["message"].get_to(data->m_message);
+        return data;
+    }
+};
+
+
 class Message {
 public:
     MessageType m_message_type;
@@ -47,6 +65,9 @@ public:
         switch (type) {
             case MessageType::HELLO:
                 message.m_data = HelloData::from_json(j["data"]);
+                break;
+            case MessageType::PUBLIC_CHAT:
+                message.m_data = PublicChatData::from_json(j["data"]);
                 break;
             default:
                 throw std::runtime_error("Unknown MessageType");
