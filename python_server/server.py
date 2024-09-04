@@ -189,7 +189,7 @@ class Server:
         
         self.online_list.append(pub_key)
         
-        # Propogate client update
+        # The message to update servers about the online list
         client_update_message = { 
             "message_type": MessageType.CLIENT_UPDATE.value, 
             "data": {
@@ -215,14 +215,22 @@ class Server:
     async def handle_client_list_request(self, websocket):
         """ Handle CLIENT_LIST_REQUEST messages (respond with CLIENT_LIST). """
         
-        await websocket.send(f"REPLY")       
+        # The message to clients servers about the online list
+        client_list_message = { 
+            "message_type": MessageType.CLIENT_LIST.value, 
+            "data": {
+                "clients": self.online_list,
+            }
+        }
+        
+        await websocket.send(f"[INSERT CLIENT_LIST HERE]")       
   
     async def handle_client_update_request(self, message_data):
         """ Handle CLIENT_UPDATE_REQUEST messages (respond with CLIENT_UPDATE). """
         
         connecting_hostname = message_data.get('hostname')
         
-        # The message to connect to a server
+        # The message to update servers about the online list
         client_update_message = { 
             "message_type": MessageType.CLIENT_UPDATE.value, 
             "data": {
