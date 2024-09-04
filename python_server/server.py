@@ -14,8 +14,9 @@ class MessageType(Enum):
     
     # Server-made messages
     SERVER_CONNECT = 100
-    CLIENT_UPDATE_REQUEST = 101
-    CLIENT_LIST = 102
+    CLIENT_LIST = 101
+    CLIENT_UPDATE_REQUEST = 102
+    CLIENT_UPDATE = 103
 
 def hash_string_sha256(input_string):
     """ Hashing helper. """
