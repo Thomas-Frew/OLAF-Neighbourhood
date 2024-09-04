@@ -86,7 +86,10 @@ class Server:
          
         # The message to get the online list from a server
         client_update_request_message = { 
-            "message_type": MessageType.CLIENT_UPDATE_REQUEST.value
+            "message_type": MessageType.CLIENT_UPDATE_REQUEST.value,
+            "data": {
+                "hostname": self.hostname
+            }
         }  
              
         # The auth context of the server you are connecting to (TODO: Get the cert of the server you want to connect to)
@@ -141,7 +144,10 @@ class Server:
                         await self.handle_client_list_request(websocket)
                         
                     elif message_type == MessageType.CLIENT_UPDATE_REQUEST:
-                        await self.handle_client_update_request(websocket)
+                        await self.handle_client_update_request(message_data)
+                        
+                    elif message_type == MessageType.CLIENT_UPDATE:
+                        await self.handle_client_update(message_data)
                         
                     else:
                         print("Message type not recognized")
@@ -181,6 +187,17 @@ class Server:
         pub_key = message_data.get('public_key')
         self.clients[pub_key] = websocket
         
+        self.online_list.append(pub_key)
+        
+        # Propogate client update
+        client_update_message = { 
+            "message_type": MessageType.CLIENT_UPDATE.value, 
+            "data": {
+                "clients": self.online_list,
+            }
+        }
+        await self.propagate_message(json.dumps(client_update_message))
+        
         # Log join event
         print(f"Client connected with public key: {pub_key}")
 
@@ -200,10 +217,28 @@ class Server:
         
         await websocket.send(f"REPLY")       
   
-    async def handle_client_update_request(self, websocket):
+    async def handle_client_update_request(self, message_data):
         """ Handle CLIENT_UPDATE_REQUEST messages (respond with CLIENT_UPDATE). """
         
-        await websocket.send(f"REPLY")  
+        connecting_hostname = message_data.get('hostname')
+        
+        # The message to connect to a server
+        client_update_message = { 
+            "message_type": MessageType.CLIENT_UPDATE.value, 
+            "data": {
+                "clients": self.online_list,
+            }
+        }
+        
+        await self.servers[connecting_hostname].send(json.dumps(client_update_message))
+  
+    async def handle_client_update(self, message_data):
+        """ Handle CLIENT_UPDATE message. """
+        
+        client_list = message_data.get('clients')
+        self.online_list = client_list
+        
+        print(f"Updated client list: {client_list}")  
   
     async def propagate_message(self, message):
         """ Propogate a message to all connected clients of the server. """
@@ -211,8 +246,8 @@ class Server:
         for hostname, server_socket in self.servers.items():
             try:
                 await server_socket.send(message)
-            except:
-                print(f"Failed to send message to neighbor: {hostname}")
+            except Exception as e:
+                print(f"Failed to send message to neighbor: {hostname} {e}")
 
 if __name__ == "__main__":
     # Read port from the command line
