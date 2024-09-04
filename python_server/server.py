@@ -36,13 +36,13 @@ class Server:
         try:
             async for message in websocket:
                 message_json = json.loads(message)
-                message_type = int(message_json.get('message_type'))
+                message_type = MessageType(message_json.get('message_type'))
                 message_data = message_json.get('data')
                 
-                if message_type == MessageType.HELLO:
+                if MessageType(message_type) == MessageType.HELLO:
                     await self.handle_hello(websocket, message_data)
                     
-                if message_type == MessageType.PUBLIC_CHAT:
+                elif MessageType(message_type) == MessageType.PUBLIC_CHAT:
                     await self.handle_public_chat(websocket, message_data)
                     
                 else:
