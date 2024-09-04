@@ -50,3 +50,4 @@ client/*
 python_server/server.cert
 python_server/server.key
 python_server/server.csr
+python_server/*.olaf

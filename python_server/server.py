@@ -7,9 +7,15 @@ from enum import Enum
 import hashlib
 
 class MessageType(Enum):    
+    # Client-made messages
     HELLO = 0
     PUBLIC_CHAT = 1
+    CLIENT_LIST_REQUEST = 2
+    
+    # Server-made messages
     SERVER_CONNECT = 100
+    CLIENT_UPDATE_REQUEST = 101
+    CLIENT_LIST = 102
 
 def hash_string_sha256(input_string):
     """ Hashing helper. """
@@ -26,6 +32,7 @@ class Server:
         
         self.clients = {} # Socket -> Client Public Key
         self.servers = {} # Socket -> Server Hostname
+        self.online_list = []
         self.past_messages = []
 
         # Setup SSL context
@@ -75,7 +82,12 @@ class Server:
                 "hostname": self.hostname
             }
         }
-           
+         
+        # The message to get the online list from a server
+        client_update_request_message = { 
+            "message_type": MessageType.CLIENT_UPDATE_REQUEST.value
+        }  
+             
         # The auth context of the server you are connecting to (TODO: Get the cert of the server you want to connect to)
         auth_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
         auth_context.load_verify_locations(cafile="python_server/server.cert")
@@ -91,8 +103,13 @@ class Server:
                 
                 try:
                     connecting_websocket = await websockets.connect(f"wss://{connecting_hostname}", ssl=auth_context)
+                    
+                    # Connect to the server with a two-way channel
                     await connecting_websocket.send(json.dumps(connect_message))
                     self.servers[connecting_hostname] = connecting_websocket
+                    
+                    # Get the online list of users
+                    await connecting_websocket.send(json.dumps(client_update_request_message))
                     
                 except:
                     print(f"Could not reach server: {connecting_hostname}")
@@ -118,6 +135,12 @@ class Server:
 
                     elif message_type == MessageType.PUBLIC_CHAT:
                         await self.handle_public_chat(message_data)
+                        
+                    elif message_type == MessageType.CLIENT_LIST_REQUEST:
+                        await self.handle_client_list_request(websocket)
+                        
+                    elif message_type == MessageType.CLIENT_UPDATE_REQUEST:
+                        await self.handle_client_update_request(websocket)
                         
                     else:
                         print("Message type not recognized")
@@ -170,7 +193,17 @@ class Server:
         # Send public chat message to all clients
         for _, client_socket in self.clients.items():
             await client_socket.send(f"From {pub_key}: {message}")
-
+            
+    async def handle_client_list_request(self, websocket):
+        """ Handle CLIENT_LIST_REQUEST messages (respond with CLIENT_LIST). """
+        
+        await websocket.send(f"REPLY")       
+  
+    async def handle_client_update_request(self, websocket):
+        """ Handle CLIENT_UPDATE_REQUEST messages (respond with CLIENT_UPDATE). """
+        
+        await websocket.send(f"REPLY")  
+  
     async def propagate_message(self, message):
         """ Propogate a message to all connected clients of the server. """
         
