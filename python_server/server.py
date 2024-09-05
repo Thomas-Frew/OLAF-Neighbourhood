@@ -189,8 +189,9 @@ class Server:
 
         try:
             async for message in websocket:
+                print(f"Message recieved: {message}")
                 message_json = json.loads(message)
-                message_type = MessageType(message_json.get('message_type'))
+                message_type = MessageType(message_json.get('type'))
                 message_data = message_json.get('data')
 
                 # Ignore if message was identical to the most recent one

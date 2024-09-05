@@ -3,33 +3,27 @@
 #include "messagehandler.hpp"
 #include "messages.hpp"
 #include <iostream>
+#include <ranges>
 #include <string>
 #include <thread>
 
-void cli(Connection &&connection, Client &&client) {
+void cli(Connection &&connection, Client &&client, std::atomic<bool> &running) {
+    // Send hello message upon connecting [REQUIRED BY PROTOCOL]
     {
-        auto message_data = std::make_unique<HelloData>();
-        message_data->m_public_key = client.getPublicKey();
-
-        Message message{MessageType::HELLO, std::move(message_data),
-                        client.getCounter(), "temp_signature"};
-
-        nlohmann::json message_json = message.to_json();
-        connection.write(message_json.dump(4));
+        auto message_data = std::make_unique<HelloData>(client.getPublicKey());
+        Message message{MessageType::HELLO, std::move(message_data)};
+        connection.write(message.to_json().dump(4));
     }
 
+    // Request list of online users
     {
         auto message_data = std::make_unique<ClientListRequest>();
-
         Message message{MessageType::CLIENT_LIST_REQUEST,
-                        std::move(message_data), client.getCounter(),
-                        "temp_signature"};
-
-        nlohmann::json message_json = message.to_json();
-        connection.write(message_json.dump(4));
+                        std::move(message_data)};
+        connection.write(message.to_json().dump(4));
     }
 
-    for (;;) {
+    while (running) {
 
         std::string input;
         std::getline(std::cin, input);
@@ -38,19 +32,17 @@ void cli(Connection &&connection, Client &&client) {
 
         std::string command;
         input_stream >> command;
+        auto text = input_stream.str() |
+                    std::ranges::views::drop_while(
+                        [](unsigned char c) { return std::isspace(c); }) |
+                    std::ranges::to<std::string>();
 
         if (command == "public_chat") {
 
-            std::string text;
-            std::getline(input_stream, text);
-            text = text.substr(1); // Trim leading whitespace
+            auto message_data =
+                std::make_unique<PublicChatData>(client.getPublicKey(), text);
 
-            auto message_data = std::make_unique<PublicChatData>();
-            message_data->m_public_key = client.getPublicKey();
-            message_data->m_message = text;
-
-            Message message{MessageType::PUBLIC_CHAT, std::move(message_data),
-                            client.getCounter(), "temp_signature"};
+            Message message{MessageType::PUBLIC_CHAT, std::move(message_data)};
 
             nlohmann::json message_json = message.to_json();
             connection.write(message_json.dump(4));
@@ -60,14 +52,13 @@ void cli(Connection &&connection, Client &&client) {
             auto message_data = std::make_unique<ClientListRequest>();
 
             Message message{MessageType::CLIENT_LIST_REQUEST,
-                            std::move(message_data), client.getCounter(),
-                            "temp_signature"};
+                            std::move(message_data)};
 
             nlohmann::json message_json = message.to_json();
             connection.write(message_json.dump(4));
 
         } else if (command == "quit") {
-            return;
+            running = false;
         }
     }
 }
@@ -94,7 +85,7 @@ int main(int argc, char **argv) {
     auto conn = Connection(host, port);
 
     // Print output while its available
-    bool running = true;
+    std::atomic<bool> running = true;
     std::thread output_thread([&conn, &running]() {
         MessageHandler handler;
         try {
@@ -106,6 +97,7 @@ int main(int argc, char **argv) {
             if (!running) {
                 // graceful shutdown, do nothing
             } else {
+                running = false;
                 std::cerr << "Error in output thread: " << e.what()
                           << std::endl;
             }
@@ -116,7 +108,7 @@ int main(int argc, char **argv) {
     Client client(public_key);
 
     // Begin the command-line interface
-    cli(std::move(conn), std::move(client));
+    cli(std::move(conn), std::move(client), running);
 
     // Close the WebSocket connection
     running = false;

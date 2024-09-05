@@ -8,10 +8,9 @@ auto MessageHandler::handle_message(std::string_view raw_message) const noexcept
     -> void {
     std::cerr << "[MESSAGE RECEIVED] " << raw_message << std::endl;
     try {
-        nlohmann::json message_json = nlohmann::json::parse(raw_message);
-        Message message = Message::from_json(message_json);
+        auto message = Message::from_json(nlohmann::json::parse(raw_message));
 
-        switch (message.m_message_type) {
+        switch (message.type()) {
         case MessageType::PUBLIC_CHAT: {
             this->handle_public_chat(std::move(message));
         }; break;

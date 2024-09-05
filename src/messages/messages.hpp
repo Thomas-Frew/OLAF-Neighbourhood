@@ -1,9 +1,7 @@
 #pragma once
 
-#include <map>
 #include <memory>
 #include <nlohmann/json.hpp>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 
@@ -22,47 +20,21 @@ static std::string_view client_list_request = "client_list_request"sv;
 static std::string_view client_list = "client_list"sv;
 }; // namespace MessageTypeString
 
-auto message_type_to_string(MessageType type) -> std::string_view {
-    switch (type) {
-    case MessageType::HELLO: {
-        return MessageTypeString::hello;
-    } break;
-    case MessageType::PUBLIC_CHAT: {
-        return MessageTypeString::public_chat;
-    } break;
-    case MessageType::CLIENT_LIST_REQUEST: {
-        return MessageTypeString::client_list_request;
-    } break;
-    case MessageType::CLIENT_LIST: {
-        return MessageTypeString::client_list;
-    } break;
-    }
-}
-
-auto string_to_message_type(std::string_view type) -> MessageType {
-    static const auto map = std::map<std::string_view, MessageType>{
-        {MessageTypeString::hello, MessageType::HELLO},
-        {MessageTypeString::public_chat, MessageType::PUBLIC_CHAT},
-        {MessageTypeString::client_list_request,
-         MessageType::CLIENT_LIST_REQUEST},
-        {MessageTypeString::client_list, MessageType::CLIENT_LIST},
-    };
-
-    return map.at(type);
-}
+auto message_type_to_string(MessageType type) -> std::string_view;
+auto string_to_message_type(std::string_view type) -> MessageType;
 
 class MessageData {
   public:
     virtual ~MessageData() = default;
-    virtual MessageType type() = 0;
-    virtual nlohmann::json to_json() = 0;
+    virtual constexpr MessageType type() const = 0;
+    virtual nlohmann::json to_json() const = 0;
     static std::unique_ptr<MessageData> from_json(const nlohmann::json &j);
 };
 
 class HelloData : public MessageData {
   public:
-    MessageType type();
-    nlohmann::json to_json();
+    constexpr auto type() const -> MessageType;
+    auto to_json() const -> nlohmann::json;
 
     explicit HelloData(std::string_view public_key)
         : m_public_key(public_key) {}
@@ -78,8 +50,8 @@ class HelloData : public MessageData {
 
 class PublicChatData : public MessageData {
   public:
-    MessageType type();
-    nlohmann::json to_json();
+    constexpr auto type() const -> MessageType;
+    auto to_json() const -> nlohmann::json;
 
     explicit PublicChatData(std::string_view public_key,
                             std::string_view message)
@@ -98,8 +70,8 @@ class PublicChatData : public MessageData {
 
 class ClientListRequest : public MessageData {
   public:
-    MessageType type();
-    nlohmann::json to_json();
+    constexpr auto type() const -> MessageType;
+    auto to_json() const -> nlohmann::json;
 
     static std::unique_ptr<ClientListRequest>
     from_json(const nlohmann::json &j) {
@@ -109,8 +81,8 @@ class ClientListRequest : public MessageData {
 
 class ClientList : public MessageData {
   public:
-    MessageType type();
-    nlohmann::json to_json();
+    constexpr auto type() const -> MessageType;
+    auto to_json() const -> nlohmann::json;
 
     static std::unique_ptr<ClientListRequest>
     from_json(const nlohmann::json &j) {
@@ -120,41 +92,17 @@ class ClientList : public MessageData {
 
 class Message {
   public:
-    nlohmann::json to_json();
+    auto to_json() const -> nlohmann::json;
 
-    static Message from_json(const nlohmann::json &j) {
-        const auto type =
-            string_to_message_type(j.at("type").get<std::string_view>());
-
-        std::unique_ptr<MessageData> data;
-        switch (type) {
-        case MessageType::HELLO: {
-            data = HelloData::from_json(j["data"]);
-        } break;
-        case MessageType::PUBLIC_CHAT: {
-            data = PublicChatData::from_json(j["data"]);
-        } break;
-        case MessageType::CLIENT_LIST_REQUEST: {
-            data = ClientListRequest::from_json(j["data"]);
-        } break;
-        case MessageType::CLIENT_LIST: {
-            data = ClientList::from_json(j["data"]);
-        } break;
-        default: {
-            throw std::runtime_error("Unknown MessageType");
-        }
-        }
-
-        return Message{type, std::move(data)};
-    }
+    static auto from_json(const nlohmann::json &j) -> Message;
 
     inline auto type() const -> MessageType { return m_type; }
     inline auto data() const -> const MessageData & { return *m_data; }
 
-  private:
     explicit Message(MessageType type, std::unique_ptr<MessageData> &&data)
         : m_type(type), m_data(std::move(data)) {}
 
+  private:
     MessageType m_type;
     std::unique_ptr<MessageData> m_data;
 };
