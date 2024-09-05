@@ -9,6 +9,7 @@ enum class MessageType : uint8_t {
     HELLO,
     PUBLIC_CHAT,
     CLIENT_LIST_REQUEST,
+    CLIENT_LIST = 101,
 };
 
 class MessageData {
@@ -61,6 +62,18 @@ class ClientListRequest : public MessageData {
     }
 };
 
+class ClientList : public MessageData {
+  public:
+    MessageType type();
+    nlohmann::json to_json();
+
+    static std::unique_ptr<ClientListRequest>
+    from_json(const nlohmann::json &j) {
+        auto data = std::make_unique<ClientListRequest>();
+        return data;
+    }
+};
+
 class Message {
   public:
     MessageType m_message_type;
@@ -76,17 +89,21 @@ class Message {
 
         auto type = static_cast<MessageType>(j["message_type"].get<uint8_t>());
         switch (type) {
-        case MessageType::HELLO:
+        case MessageType::HELLO: {
             message.m_data = HelloData::from_json(j["data"]);
-            break;
-        case MessageType::PUBLIC_CHAT:
+        } break;
+        case MessageType::PUBLIC_CHAT: {
             message.m_data = PublicChatData::from_json(j["data"]);
-            break;
-        case MessageType::CLIENT_LIST_REQUEST:
+        } break;
+        case MessageType::CLIENT_LIST_REQUEST: {
             message.m_data = ClientListRequest::from_json(j["data"]);
-
-        default:
+        } break;
+        case MessageType::CLIENT_LIST: {
+            message.m_data = ClientList::from_json(j["data"]);
+        } break;
+        default: {
             throw std::runtime_error("Unknown MessageType");
+        }
         }
 
         j["counter"].get_to(message.m_counter);

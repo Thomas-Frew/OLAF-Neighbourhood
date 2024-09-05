@@ -67,6 +67,7 @@ class Server:
 
     def create_message(self, message_type):
         self.counter = self.counter + 1
+        signature = "temporary_signature"
 
         if (message_type == MessageType.SERVER_CONNECT):
             message = {
@@ -74,6 +75,7 @@ class Server:
                 "data": {
                     "hostname": self.hostname
                 },
+                "signature": signature,
                 "counter": self.counter
             }
             return message
@@ -84,6 +86,7 @@ class Server:
                 "data": {
                     "servers": self.all_clients
                 },
+                "signature": signature,
                 "counter": self.counter
             }
             return message
@@ -94,6 +97,7 @@ class Server:
                 "data": {
                     "hostname": self.hostname
                 },
+                "signature": signature,
                 "counter": self.counter
             }
             return message
@@ -105,6 +109,7 @@ class Server:
                     "hostname": self.hostname,
                     "clients": list(self.clients.keys())
                 },
+                "signature": signature,
                 "counter": self.counter
             }
             return message
@@ -201,7 +206,7 @@ class Server:
                         await self.handle_hello(websocket, message_data)
 
                     elif message_type == MessageType.PUBLIC_CHAT:
-                        await self.handle_public_chat(message)
+                        await self.handle_public_chat(message_json)
 
                     elif message_type == MessageType.CLIENT_LIST_REQUEST:
                         await self.handle_client_list_request(websocket)

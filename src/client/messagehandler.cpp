@@ -15,10 +15,12 @@ auto MessageHandler::handle_message(std::string_view raw_message) const noexcept
         case MessageType::PUBLIC_CHAT: {
             this->handle_public_chat(std::move(message));
         }; break;
-        case MessageType::CLIENT_LIST_REQUEST: {
+        case MessageType::CLIENT_LIST: {
             this->handle_client_list(std::move(message));
         }; break;
         case MessageType::HELLO:
+            [[fallthrough]];
+        case MessageType::CLIENT_LIST_REQUEST:
             [[fallthrough]];
         default:
             break;
