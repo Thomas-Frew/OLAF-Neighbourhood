@@ -1,31 +1,32 @@
-#include <nlohmann/json.hpp>
-#include <iostream>
-#include <memory>
-#include <string>
-#include <stdexcept>
+#pragma once
 
-enum class MessageType : uint8_t { 
+#include <memory>
+#include <nlohmann/json.hpp>
+#include <stdexcept>
+#include <string>
+
+enum class MessageType : uint8_t {
     HELLO,
     PUBLIC_CHAT,
     CLIENT_LIST_REQUEST,
 };
 
 class MessageData {
-public:
+  public:
     virtual ~MessageData() = default;
     virtual MessageType type() = 0;
     virtual nlohmann::json to_json() = 0;
-    static std::unique_ptr<MessageData> from_json(const nlohmann::json& j);
+    static std::unique_ptr<MessageData> from_json(const nlohmann::json &j);
 };
 
 class HelloData : public MessageData {
-public:
+  public:
     std::string m_public_key;
 
     MessageType type();
     nlohmann::json to_json();
 
-    static std::unique_ptr<HelloData> from_json(const nlohmann::json& j) {
+    static std::unique_ptr<HelloData> from_json(const nlohmann::json &j) {
         auto data = std::make_unique<HelloData>();
         j["public_key"].get_to(data->m_public_key);
         return data;
@@ -33,14 +34,14 @@ public:
 };
 
 class PublicChatData : public MessageData {
-public:
+  public:
     std::string m_public_key;
     std::string m_message;
 
     MessageType type();
     nlohmann::json to_json();
 
-    static std::unique_ptr<PublicChatData> from_json(const nlohmann::json& j) {
+    static std::unique_ptr<PublicChatData> from_json(const nlohmann::json &j) {
         auto data = std::make_unique<PublicChatData>();
         j["public_key"].get_to(data->m_public_key);
         j["message"].get_to(data->m_message);
@@ -49,19 +50,19 @@ public:
 };
 
 class ClientListRequest : public MessageData {
-public:
+  public:
     MessageType type();
     nlohmann::json to_json();
 
-    static std::unique_ptr<ClientListRequest> from_json(const nlohmann::json& j) {
+    static std::unique_ptr<ClientListRequest>
+    from_json(const nlohmann::json &j) {
         auto data = std::make_unique<ClientListRequest>();
         return data;
     }
 };
 
-
 class Message {
-public:
+  public:
     MessageType m_message_type;
     std::unique_ptr<MessageData> m_data;
     uint32_t m_counter;
@@ -69,23 +70,23 @@ public:
 
     nlohmann::json to_json();
 
-    static Message from_json(const nlohmann::json& j) {
+    static Message from_json(const nlohmann::json &j) {
         Message message;
         j["message_type"].get_to(message.m_message_type);
 
         auto type = static_cast<MessageType>(j["message_type"].get<uint8_t>());
         switch (type) {
-            case MessageType::HELLO:
-                message.m_data = HelloData::from_json(j["data"]);
-                break;
-            case MessageType::PUBLIC_CHAT:
-                message.m_data = PublicChatData::from_json(j["data"]);
-                break;
-            case MessageType::CLIENT_LIST_REQUEST:
-                message.m_data = ClientListRequest::from_json(j["data"]);
+        case MessageType::HELLO:
+            message.m_data = HelloData::from_json(j["data"]);
+            break;
+        case MessageType::PUBLIC_CHAT:
+            message.m_data = PublicChatData::from_json(j["data"]);
+            break;
+        case MessageType::CLIENT_LIST_REQUEST:
+            message.m_data = ClientListRequest::from_json(j["data"]);
 
-            default:
-                throw std::runtime_error("Unknown MessageType");
+        default:
+            throw std::runtime_error("Unknown MessageType");
         }
 
         j["counter"].get_to(message.m_counter);

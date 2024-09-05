@@ -1,4 +1,6 @@
 #include "server.hpp"
+#include "messages.hpp"
+#include <nlohmann/json.hpp>
 
 // Debug
 void Server::printRecievedMessage(std::string_view message) {
