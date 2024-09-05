@@ -7,6 +7,7 @@ from enum import Enum
 import hashlib
 import warnings
 
+
 class MessageType(Enum):
     # Client-made messages
     HELLO = 0
@@ -30,8 +31,12 @@ def hash_string_sha256(input_string):
 class Server:
     def __init__(self, host, port):
         # Suppress specific deprecation warnings for SSL options
-        warnings.filterwarnings("ignore", category=DeprecationWarning, message="ssl.OP_NO_TLS* options are deprecated")
-        warnings.filterwarnings("ignore", category=DeprecationWarning, message="ssl.OP_NO_SSL* options are deprecated")
+        warnings.filterwarnings("ignore", category=DeprecationWarning,
+                                message="ssl.OP_NO_TLS* options are deprecated"
+                                )
+        warnings.filterwarnings("ignore", category=DeprecationWarning,
+                                message="ssl.OP_NO_SSL* options are deprecated"
+                                )
 
         # Server details
         self.host = host
@@ -139,7 +144,8 @@ class Server:
         client_update_request_message = self.create_message(
             MessageType.CLIENT_UPDATE_REQUEST)
 
-        # The auth context of the server you are connecting to (TODO: Get the cert of the server you want to connect to)
+        # The auth context of the server you are connecting to
+        # TODO: Get the cert of the server you want to connect to
         auth_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
         auth_context.load_verify_locations(cafile="server.cert")
 
@@ -154,17 +160,23 @@ class Server:
                     continue
 
                 try:
-                    connecting_websocket = await websockets.connect(f"wss://{connecting_hostname}", ssl=auth_context)
+                    connecting_websocket = await websockets.connect(
+                        f"wss://{connecting_hostname}", ssl=auth_context
+                    )
 
                     # Connect to the server with a two-way channel
-                    await connecting_websocket.send(json.dumps(connect_message))
+                    await connecting_websocket.send(
+                        json.dumps(connect_message)
+                    )
                     self.servers[connecting_hostname] = connecting_websocket
                     self.all_clients[connecting_hostname] = []
 
                     # Get the online list of users
-                    await connecting_websocket.send(json.dumps(client_update_request_message))
+                    await connecting_websocket.send(
+                        json.dumps(client_update_request_message)
+                    )
 
-                except:
+                except Exception:
                     print(f"Could not reach server: {connecting_hostname}")
 
     async def handle_client(self, websocket, path):
@@ -176,7 +188,8 @@ class Server:
                 message_type = MessageType(message_json.get('message_type'))
                 message_data = message_json.get('data')
 
-                # Ignore if message was identical to the most recent one (DOS and loop protection)
+                # Ignore if message was identical to the most recent one
+                # (DOS and loop protection)
                 if (hash_string_sha256(message) != self.last_message):
                     self.last_message = hash_string_sha256(message)
 
@@ -206,7 +219,7 @@ class Server:
                     if message_type == MessageType.PUBLIC_CHAT:
                         await self.propagate_message(message)
 
-        except Exception as e:
+        except Exception:
             await self.handle_client_disconnect(websocket)
 
         finally:
@@ -249,13 +262,15 @@ class Server:
             auth_context.load_verify_locations(
                 cafile="server.cert")
 
-            connecting_socket = await websockets.connect(f"wss://{connecting_hostname}", ssl=auth_context)
+            connecting_socket = await websockets.connect(
+                f"wss://{connecting_hostname}", ssl=auth_context
+            )
             self.servers[connecting_hostname] = connecting_socket
             self.all_clients[connecting_hostname] = []
 
             print(f"Server connected with hostname: {connecting_hostname}")
 
-        except:
+        except Exception:
             print(f"Failed to send message to neighbor: {connecting_hostname}")
 
     async def handle_hello(self, websocket, message_data):
@@ -287,12 +302,15 @@ class Server:
         await websocket.send(json.dumps(client_list_message))
 
     async def handle_client_update_request(self, message_data):
-        """ Handle CLIENT_UPDATE_REQUEST messages (respond with CLIENT_UPDATE). """
+        """ Handle CLIENT_UPDATE_REQUEST messages """
+        """ respond with CLIENT_UPDATE """
 
         connecting_hostname = message_data.get('hostname')
         client_update_message = self.create_message(MessageType.CLIENT_UPDATE)
 
-        await self.servers[connecting_hostname].send(json.dumps(client_update_message))
+        await self.servers[connecting_hostname].send(
+            json.dumps(client_update_message)
+        )
 
     async def handle_client_update(self, message_data):
         """ Handle CLIENT_UPDATE message. """
@@ -311,7 +329,7 @@ class Server:
         for hostname, server_socket in self.servers.items():
             try:
                 await server_socket.send(message)
-            except:
+            except Exception:
                 print(f"Failed to send message to neighbor: {hostname}")
                 server_misses.append(hostname)
 
