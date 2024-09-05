@@ -1,3 +1,5 @@
+#pragma once
+
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl.hpp>
 #include <boost/beast/websocket.hpp>

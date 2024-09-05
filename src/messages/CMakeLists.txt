@@ -1,1 +1,0 @@
-link_libraries(messages PRIVATE nlohmann_json::nlohmann_json)

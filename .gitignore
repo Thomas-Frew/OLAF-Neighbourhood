@@ -36,18 +36,11 @@ build/*
 .cache/*
 
 # LSP stuff
-compile_commands.json
-
-# SSL
-ssl/*
 .vscode
 
 # Output dirs
-server/*
 client/*
-
-# Certificates
-python_server/server.cert
-python_server/server.key
-python_server/server.csr
-python_server/*.olaf
+server/server.cert
+server/server.key
+server/server.csr
+server/*.olaf
