@@ -10,15 +10,15 @@ import warnings
 
 class MessageType(Enum):
     # Client-made messages
-    HELLO = 0
-    PUBLIC_CHAT = 1
-    CLIENT_LIST_REQUEST = 2
+    HELLO = "hello"
+    PUBLIC_CHAT = "public_chat"
+    CLIENT_LIST_REQUEST = "client_list_request"
 
     # Server-made messages
-    SERVER_CONNECT = 100
-    CLIENT_LIST = 101
-    CLIENT_UPDATE_REQUEST = 102
-    CLIENT_UPDATE = 103
+    SERVER_CONNECT = "server_connect"
+    CLIENT_LIST = "client_list"
+    CLIENT_UPDATE_REQUEST = "client_update_request"
+    CLIENT_UPDATE = "client_update"
 
 
 def hash_string_sha256(input_string):
@@ -71,7 +71,7 @@ class Server:
 
         if (message_type == MessageType.SERVER_CONNECT):
             message = {
-                "message_type": MessageType.SERVER_CONNECT.value,
+                "type": MessageType.SERVER_CONNECT.value,
                 "data": {
                     "hostname": self.hostname
                 },
@@ -82,7 +82,7 @@ class Server:
 
         elif (message_type == MessageType.CLIENT_LIST):
             message = {
-                "message_type": MessageType.CLIENT_LIST.value,
+                "type": MessageType.CLIENT_LIST.value,
                 "data": {
                     "servers": self.all_clients
                 },
@@ -93,7 +93,7 @@ class Server:
 
         elif (message_type == MessageType.CLIENT_UPDATE_REQUEST):
             message = {
-                "message_type": MessageType.CLIENT_UPDATE_REQUEST.value,
+                "type": MessageType.CLIENT_UPDATE_REQUEST.value,
                 "data": {
                     "hostname": self.hostname
                 },
@@ -104,7 +104,7 @@ class Server:
 
         elif (message_type == MessageType.CLIENT_UPDATE):
             message = {
-                "message_type": MessageType.CLIENT_UPDATE.value,
+                "type": MessageType.CLIENT_UPDATE.value,
                 "data": {
                     "hostname": self.hostname,
                     "clients": list(self.clients.keys())
