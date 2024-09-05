@@ -33,8 +33,13 @@ class Server:
         
         self.clients = {} # Socket -> Client Public Key
         self.servers = {} # Socket -> Server Hostname
-        self.online_list = []
-        self.past_messages = []
+        
+        self.all_clients = {} # Server hostname -> User List
+        self.all_clients[self.hostname] = []
+        
+        self.counter = 0
+        
+        self.last_message = None
 
         # Setup SSL context
         self.ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -47,6 +52,50 @@ class Server:
         # Load certificate chain
         self.ssl_context.load_cert_chain(certfile="python_server/server.cert", keyfile="python_server/server.key")
 
+    def create_message(self, message_type):
+        self.counter = self.counter + 1
+        
+        if (message_type == MessageType.SERVER_CONNECT):
+            message = { 
+                "message_type": MessageType.SERVER_CONNECT.value, 
+                "data": { 
+                    "hostname": self.hostname 
+                },
+                "counter": self.counter
+            }
+            return message
+         
+        elif (message_type == MessageType.CLIENT_LIST):
+            message = { 
+                "message_type": MessageType.CLIENT_LIST.value, 
+                "data": {
+                    "servers": self.all_clients
+                },
+                "counter": self.counter
+            }
+            return message    
+            
+        elif (message_type == MessageType.CLIENT_UPDATE_REQUEST):
+            message = { 
+                "message_type": MessageType.CLIENT_UPDATE_REQUEST.value, 
+                "data": { 
+                    "hostname": self.hostname
+                },
+                "counter": self.counter
+            }
+            return message    
+            
+        elif (message_type == MessageType.CLIENT_UPDATE):
+            message = { 
+                "message_type": MessageType.CLIENT_UPDATE.value, 
+                "data": { 
+                    "hostname": self.hostname,
+                    "clients": list(self.clients.keys()) 
+                },
+                "counter": self.counter
+            }
+            return message
+        
     async def start_server(self):
         """ Begin the server and its core functions. """
         
@@ -76,21 +125,9 @@ class Server:
     async def connect_to_neighbourhood(self):
         """ Connect to all servers in the neighbourhood. """
         
-        # The message to connect to a server
-        connect_message = { 
-            "message_type": MessageType.SERVER_CONNECT.value, 
-            "data": {
-                "hostname": self.hostname
-            }
-        }
-         
-        # The message to get the online list from a server
-        client_update_request_message = { 
-            "message_type": MessageType.CLIENT_UPDATE_REQUEST.value,
-            "data": {
-                "hostname": self.hostname
-            }
-        }  
+        # Consturct messages
+        connect_message = self.create_message(MessageType.SERVER_CONNECT)
+        client_update_request_message = self.create_message(MessageType.CLIENT_UPDATE_REQUEST)
              
         # The auth context of the server you are connecting to (TODO: Get the cert of the server you want to connect to)
         auth_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
@@ -111,6 +148,7 @@ class Server:
                     # Connect to the server with a two-way channel
                     await connecting_websocket.send(json.dumps(connect_message))
                     self.servers[connecting_hostname] = connecting_websocket
+                    self.all_clients[connecting_hostname] = []
                     
                     # Get the online list of users
                     await connecting_websocket.send(json.dumps(client_update_request_message))
@@ -127,9 +165,10 @@ class Server:
                 message_type = MessageType(message_json.get('message_type'))
                 message_data = message_json.get('data')
                 
-                if (message_json not in self.past_messages):
-                    self.past_messages.append(message_json)
-                    
+                # Ignore if message was identical to the most recent one (DOS and loop protection)
+                if (hash_string_sha256(message) != self.last_message):
+                    self.last_message = hash_string_sha256(message)
+ 
                     # Handle message
                     if message_type == MessageType.SERVER_CONNECT:
                         await self.handle_server_connect(message_data)
@@ -138,7 +177,7 @@ class Server:
                         await self.handle_hello(websocket, message_data)
 
                     elif message_type == MessageType.PUBLIC_CHAT:
-                        await self.handle_public_chat(message_data)
+                        await self.handle_public_chat(message)
                         
                     elif message_type == MessageType.CLIENT_LIST_REQUEST:
                         await self.handle_client_list_request(websocket)
@@ -174,6 +213,7 @@ class Server:
         
             connecting_socket = await websockets.connect(f"wss://{connecting_hostname}", ssl=auth_context)
             self.servers[connecting_hostname] = connecting_socket
+            self.all_clients[connecting_hostname] = []
 
             print(f"Server connected with hostname: {connecting_hostname}")
         
@@ -186,67 +226,44 @@ class Server:
         # Register client              
         pub_key = message_data.get('public_key')
         self.clients[pub_key] = websocket
+
+        self.all_clients[self.hostname].append(pub_key)
         
-        self.online_list.append(pub_key)
-        
-        # The message to update servers about the online list
-        client_update_message = { 
-            "message_type": MessageType.CLIENT_UPDATE.value, 
-            "data": {
-                "clients": self.online_list,
-            }
-        }
+        client_update_message = self.create_message(MessageType.CLIENT_UPDATE)
         await self.propagate_message(json.dumps(client_update_message))
         
         # Log join event
         print(f"Client connected with public key: {pub_key}")
 
-    async def handle_public_chat(self, message_data):
+    async def handle_public_chat(self, message):
         """ Handle PUBLIC_CHAT messages. """
-        
-        # Extract public key and message
-        pub_key = message_data.get('public_key')
-        message = message_data.get('message')
         
         # Send public chat message to all clients
         for _, client_socket in self.clients.items():
-            await client_socket.send(f"From {pub_key}: {message}")
+            await client_socket.send(message)
             
     async def handle_client_list_request(self, websocket):
         """ Handle CLIENT_LIST_REQUEST messages (respond with CLIENT_LIST). """
         
-        # The message to clients servers about the online list
-        client_list_message = { 
-            "message_type": MessageType.CLIENT_LIST.value, 
-            "data": {
-                "clients": self.online_list,
-            }
-        }
-        
-        await websocket.send(f"[INSERT CLIENT_LIST HERE]")       
+        client_list_message = self.create_message(MessageType.CLIENT_LIST)
+        await websocket.send(json.dumps(client_list_message))       
   
     async def handle_client_update_request(self, message_data):
         """ Handle CLIENT_UPDATE_REQUEST messages (respond with CLIENT_UPDATE). """
         
         connecting_hostname = message_data.get('hostname')
-        
-        # The message to update servers about the online list
-        client_update_message = { 
-            "message_type": MessageType.CLIENT_UPDATE.value, 
-            "data": {
-                "clients": self.online_list,
-            }
-        }
+        client_update_message = self.create_message(MessageType.CLIENT_UPDATE)
         
         await self.servers[connecting_hostname].send(json.dumps(client_update_message))
   
     async def handle_client_update(self, message_data):
         """ Handle CLIENT_UPDATE message. """
         
+        hostname = message_data.get('hostname')
         client_list = message_data.get('clients')
-        self.online_list = client_list
         
-        print(f"Updated client list: {client_list}")  
+        self.all_clients[hostname] = client_list
+        print(f"Updated client list to: {self.all_clients}")  
   
     async def propagate_message(self, message):
         """ Propogate a message to all connected clients of the server. """
