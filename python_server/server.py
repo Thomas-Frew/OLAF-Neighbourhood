@@ -5,7 +5,7 @@ import ssl
 import sys
 from enum import Enum
 import hashlib
-
+import warnings
 
 class MessageType(Enum):
     # Client-made messages
@@ -29,6 +29,10 @@ def hash_string_sha256(input_string):
 
 class Server:
     def __init__(self, host, port):
+        # Suppress specific deprecation warnings for SSL options
+        warnings.filterwarnings("ignore", category=DeprecationWarning, message="ssl.OP_NO_TLS* options are deprecated")
+        warnings.filterwarnings("ignore", category=DeprecationWarning, message="ssl.OP_NO_SSL* options are deprecated")
+
         # Server details
         self.host = host
         self.port = port
