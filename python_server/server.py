@@ -309,11 +309,20 @@ class Server:
     async def propagate_message(self, message):
         """ Propogate a message to all connected clients of the server. """
         
+        server_misses = []
+        
         for hostname, server_socket in self.servers.items():
             try:
                 await server_socket.send(message)
-            except Exception as e:
-                print(f"Failed to send message to neighbor: {hostname} {e}")
+            except:
+                print(f"Failed to send message to neighbor: {hostname}")
+                server_misses.append(hostname)
+                
+                
+        for hostname in server_misses:
+            del self.servers[hostname]
+            del self.all_clients[hostname]
+            print(f"Server disconnected with hostname: {hostname}")
 
 
 if __name__ == "__main__":
