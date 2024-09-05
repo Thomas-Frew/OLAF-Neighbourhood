@@ -5,7 +5,7 @@ import ssl
 import sys
 from enum import Enum
 import hashlib
-
+import warnings
 
 class MessageType(Enum):
     # Client-made messages
@@ -29,6 +29,10 @@ def hash_string_sha256(input_string):
 
 class Server:
     def __init__(self, host, port):
+        # Suppress specific deprecation warnings for SSL options
+        warnings.filterwarnings("ignore", category=DeprecationWarning, message="ssl.OP_NO_TLS* options are deprecated")
+        warnings.filterwarnings("ignore", category=DeprecationWarning, message="ssl.OP_NO_SSL* options are deprecated")
+
         # Server details
         self.host = host
         self.port = port
@@ -54,7 +58,7 @@ class Server:
 
         # Load certificate chain
         self.ssl_context.load_cert_chain(
-            certfile="python_server/server.cert", keyfile="python_server/server.key")
+            certfile="server.cert", keyfile="server.key")
 
     def create_message(self, message_type):
         self.counter = self.counter + 1
@@ -137,10 +141,10 @@ class Server:
 
         # The auth context of the server you are connecting to (TODO: Get the cert of the server you want to connect to)
         auth_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-        auth_context.load_verify_locations(cafile="python_server/server.cert")
+        auth_context.load_verify_locations(cafile="server.cert")
 
         # Iterate through servers in the list
-        with open('python_server/neighbourhood.olaf', 'r') as file:
+        with open('neighbourhood.olaf', 'r') as file:
             for connecting_hostname in file:
                 # Ensure no leading/trailing whitespace
                 connecting_hostname = connecting_hostname.strip()
@@ -243,7 +247,7 @@ class Server:
         try:
             auth_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
             auth_context.load_verify_locations(
-                cafile="python_server/server.cert")
+                cafile="server.cert")
 
             connecting_socket = await websockets.connect(f"wss://{connecting_hostname}", ssl=auth_context)
             self.servers[connecting_hostname] = connecting_socket
