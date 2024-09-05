@@ -240,7 +240,7 @@ class Server:
         
         # Send public chat message to all clients
         for _, client_socket in self.clients.items():
-            await client_socket.send(message)
+            await client_socket.send(json.dumps(message))
             
     async def handle_client_list_request(self, websocket):
         """ Handle CLIENT_LIST_REQUEST messages (respond with CLIENT_LIST). """
