@@ -1,5 +1,5 @@
 include_directories(${CMAKE_SOURCE_DIR}/src/messages)
-add_executable(server main.cpp server.cpp ${CMAKE_SOURCE_DIR}/src/messages/messages.cpp)
+# add_executable(server main.cpp server.cpp ${CMAKE_SOURCE_DIR}/src/messages/messages.cpp)
 
 set_target_properties(server PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/server")
 
