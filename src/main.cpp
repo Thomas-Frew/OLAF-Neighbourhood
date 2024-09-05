@@ -1,67 +1,10 @@
+#include "cli.hpp"
 #include "client.hpp"
 #include "connection.hpp"
 #include "messagehandler.hpp"
-#include "messages.hpp"
 #include <iostream>
-#include <ranges>
 #include <string>
 #include <thread>
-
-void cli(Connection &&connection, Client &&client, std::atomic<bool> &running) {
-    // Send hello message upon connecting [REQUIRED BY PROTOCOL]
-    {
-        auto message_data = std::make_unique<HelloData>(client.getPublicKey());
-        Message message{MessageType::HELLO, std::move(message_data)};
-        connection.write(message.to_json().dump(4));
-    }
-
-    // Request list of online users
-    {
-        auto message_data = std::make_unique<ClientListRequest>();
-        Message message{MessageType::CLIENT_LIST_REQUEST,
-                        std::move(message_data)};
-        connection.write(message.to_json().dump(4));
-    }
-
-    while (running) {
-
-        std::string input;
-        std::getline(std::cin, input);
-
-        std::stringstream input_stream(input);
-
-        std::string command;
-        input_stream >> command;
-        auto text = input_stream.str() |
-                    std::ranges::views::drop_while(
-                        [](unsigned char c) { return std::isspace(c); }) |
-                    std::ranges::to<std::string>();
-
-        if (command == "public_chat") {
-
-            auto message_data =
-                std::make_unique<PublicChatData>(client.getPublicKey(), text);
-
-            Message message{MessageType::PUBLIC_CHAT, std::move(message_data)};
-
-            nlohmann::json message_json = message.to_json();
-            connection.write(message_json.dump(4));
-
-        } else if (command == "online_list") {
-
-            auto message_data = std::make_unique<ClientListRequest>();
-
-            Message message{MessageType::CLIENT_LIST_REQUEST,
-                            std::move(message_data)};
-
-            nlohmann::json message_json = message.to_json();
-            connection.write(message_json.dump(4));
-
-        } else if (command == "quit") {
-            running = false;
-        }
-    }
-}
 
 // Sends a WebSocket message and prints the response
 int main(int argc, char **argv) {
