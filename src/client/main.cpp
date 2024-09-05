@@ -54,6 +54,17 @@ void cli(Connection &&connection, Client &&client) {
             nlohmann::json message_json = message.to_json();
             connection.write(message_json.dump(4));
 
+        } else if (command == "online_list") {
+
+            auto message_data = std::make_unique<ClientListRequest>();
+
+            Message message{MessageType::CLIENT_LIST_REQUEST,
+                            std::move(message_data), client.getCounter(),
+                            "temp_signature"};
+
+            nlohmann::json message_json = message.to_json();
+            connection.write(message_json.dump(4));
+
         } else if (command == "quit") {
             return;
         }
