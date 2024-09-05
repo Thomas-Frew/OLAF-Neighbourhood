@@ -6,13 +6,23 @@
 #include <thread>
 
 void cli(Connection &&connection, Client &&client) {
-
     {
         auto message_data = std::make_unique<HelloData>();
         message_data->m_public_key = client.getPublicKey();
 
         Message message{MessageType::HELLO, std::move(message_data),
                         client.getCounter(), "temp_signature"};
+
+        nlohmann::json message_json = message.to_json();
+        connection.write(message_json.dump(4));
+    }
+
+    {
+        auto message_data = std::make_unique<ClientListRequest>();
+
+        Message message{MessageType::CLIENT_LIST_REQUEST,
+                        std::move(message_data), client.getCounter(),
+                        "temp_signature"};
 
         nlohmann::json message_json = message.to_json();
         connection.write(message_json.dump(4));
@@ -40,6 +50,17 @@ void cli(Connection &&connection, Client &&client) {
 
             Message message{MessageType::PUBLIC_CHAT, std::move(message_data),
                             client.getCounter(), "temp_signature"};
+
+            nlohmann::json message_json = message.to_json();
+            connection.write(message_json.dump(4));
+
+        } else if (command == "online_list") {
+
+            auto message_data = std::make_unique<ClientListRequest>();
+
+            Message message{MessageType::CLIENT_LIST_REQUEST,
+                            std::move(message_data), client.getCounter(),
+                            "temp_signature"};
 
             nlohmann::json message_json = message.to_json();
             connection.write(message_json.dump(4));

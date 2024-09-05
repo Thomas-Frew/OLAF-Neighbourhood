@@ -3,7 +3,7 @@
 
 class Client {
 public:
-    Client(std::string public_key): m_public_key(public_key) {}
+    Client(std::string public_key): m_public_key(public_key), m_counter(0) {}
 
     std::string getPublicKey();
     uint32_t getCounter();
