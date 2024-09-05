@@ -1,5 +1,6 @@
 #include "client.hpp"
 #include "connection.hpp"
+#include "messagehandler.hpp"
 #include "messages.hpp"
 #include <iostream>
 #include <string>
@@ -95,10 +96,11 @@ int main(int argc, char **argv) {
     // Print output while its available
     bool running = true;
     std::thread output_thread([&conn, &running]() {
+        MessageHandler handler;
         try {
             while (running) {
                 auto message = conn.read();
-                std::cout << "[SERVER]: " << message << std::endl;
+                handler.handle_message(message);
             }
         } catch (std::exception const &e) {
             if (!running) {
