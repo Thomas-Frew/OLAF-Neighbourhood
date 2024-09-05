@@ -203,9 +203,35 @@ class Server:
                     if message_type == MessageType.PUBLIC_CHAT:
                         await self.propagate_message(message)
                 
+        except Exception as e:
+            await self.handle_client_disconnect(websocket)
+            
         finally:
-            # TODO: Handle client disconnects
-            pass
+            # Ensure client cleanup on disconnect
+            await self.handle_client_disconnect(websocket)
+
+
+    async def handle_client_disconnect(self, websocket):
+        """ Handle client disconnection. """
+        
+        # Find the client by websocket
+        pub_key_to_remove = None
+        for pub_key, client_socket in self.clients.items():
+            if client_socket == websocket:
+                pub_key_to_remove = pub_key
+                break
+        
+        if pub_key_to_remove:
+            # Remove the client
+            del self.clients[pub_key_to_remove]
+            self.all_clients[self.hostname].remove(pub_key_to_remove)
+            
+            # Log disconnect event
+            print(f"Client disconnected with public key: {pub_key_to_remove}")
+            
+            # Notify other servers about the update
+            client_update_message = self.create_message(MessageType.CLIENT_UPDATE)
+            await self.propagate_message(json.dumps(client_update_message))
 
 
     async def handle_server_connect(self, message_data):
