@@ -22,7 +22,7 @@ The client will be built as `/client/client`.
 
 ### Running the Client
 
-The client is run within the `client` directory, as `./client [port]? [pub_key]?`
+The client is run within the `client` directory as `./client [port]? [pub_key]?`
 
 - `[ip]`: An optional argument containing the port of the server. Defaults to 1443.
 - `[pub_key]`: An optional argument containing the public key of the client. Defaults to 'default'.
@@ -59,13 +59,13 @@ openssl x509 -req -days 30 -in python-server/server.csr -signkey python-server/s
 The server also required a file containing all hostnames of servers in their neighbourhood (in the form `host:port`). These are stored in `python-server/neighbourhood.olaf` as plaintext.
 
 ### Building the Server
-The Client is written in Python, and therefore does not get built. 
+The Client is written in Python and, therefore, does not get built. 
 
 All source code is stored in `python-server`, with the entry point being `python-server/server.py`.
 
 ### Running the Server
 
-The client is run within the `python-server` directory, as `python3 ./server.py [port]?`
+The client is run within the `python-server` directory as `python3 ./server.py [port]?`
 
 - `[port]`: An optional argument containing the port of the server. Defaults to 1443.
 
@@ -73,6 +73,6 @@ The client is run within the `python-server` directory, as `python3 ./server.py 
 
 When the server is run, the following happens:
 1. The server tries to establish a websocket connection with all servers in its neighbourhood.
-2. The server sends a `SERVER_CONNECT` message to each neighbourhood server.
-3. The server sends a `CLIENT_UPDATE_REQUEST` message to the each connected server.
+2. The server sends a `SERVER_CONNECT` message to each neighbourhood server (so that they can form a websocket connection bacl.
+3. The server sends a `CLIENT_UPDATE_REQUEST` message to each connected server.
 4. The set of online clients is displayed in the terminal.
