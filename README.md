@@ -3,6 +3,13 @@ An implementation of the OLAF's Neighbourhood protocol.
 
 ## Client
 
+### Client Setup
+
+In the `client` directory, the following is required:
+
+- `server.cert`: The certificate of the server the client is connecting to.
+
+
 ### Building the Client
 The Client is written in C++, with all dependencies managed by CMake. To build the client, write the following commands in the project root:
 ```bash
@@ -36,20 +43,26 @@ The client CLI supports the following commands:
 - `public_chat`: Send a message to all connected users.
 - `online_list`: Request a client list from your connected server.
 
-### Required Files
+## Server
 
-In the `client` directory, the following is required:
-
-- `server.cert`: The certificate of the server the client is connecting to.
-
-
-## Server Setup
-The server requires a 2048-bit RSA private key, and a certificate. These are stored in `ssl/key.pem` and `ssl/cert.pem` respectively.
+### Server Setup
+The server requires a 2048-bit RSA private key, and a certificate. These are stored in `python-server/server.key` and `python-server/server.cert` respectively.
 
 You can generate them with the following commands:
 ```bash
 mkdir ssl
-openssl genrsa -out ssl/server.key 2048
-openssl req -new -key ssl/server.key -out ssl/server.csr
-openssl x509 -req -days 30 -in ssl/server.csr -signkey ssl/server.key -out ssl/server.cert
+openssl genrsa -out python-server/server.key 2048
+openssl req -new -key python-server/server.key -out python-server/server.csr
+openssl x509 -req -days 30 -in python-server/server.csr -signkey python-server/server.key -out python-server/server.cert
 ```
+
+The server also 
+
+### Building the Server
+The Client is written in Python, and therefore does not get built. 
+
+All source code is stored in `python-server`, with the entry point being `python-server.server.py`.
+
+### Running the Server
+
+
