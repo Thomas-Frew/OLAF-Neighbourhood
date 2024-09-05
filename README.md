@@ -61,7 +61,7 @@ The server also required a file containing all hostnames of servers in their nei
 ### Building the Server
 The Client is written in Python, and therefore does not get built. 
 
-All source code is stored in `python-server`, with the entry point being `python-server.server.py`.
+All source code is stored in `python-server`, with the entry point being `python-server/server.py`.
 
 ### Running the Server
 
