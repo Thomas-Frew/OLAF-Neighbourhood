@@ -27,7 +27,7 @@ Connection::Connection(std::string host, std::string_view port)
     // Sign with CA
     this->m_ctx.set_verify_mode(ssl::verify_peer);
     this->m_ctx.set_default_verify_paths();
-    this->m_ctx.load_verify_file("client/server.cert");
+    this->m_ctx.load_verify_file("server.cert");
 
     // Disable compression - can lead to vulnerabilities
     SSL_CTX_set_options(this->m_ctx.native_handle(), SSL_OP_NO_COMPRESSION);
