@@ -6,6 +6,7 @@ import sys
 from enum import Enum
 import hashlib
 
+
 class MessageType(Enum):    
     # Client-made messages
     HELLO = 0
@@ -18,11 +19,13 @@ class MessageType(Enum):
     CLIENT_UPDATE_REQUEST = 102
     CLIENT_UPDATE = 103
 
+
 def hash_string_sha256(input_string):
     """ Hashing helper. """
     sha256 = hashlib.sha256()
     sha256.update(input_string.encode('utf-8'))
     return sha256.hexdigest()
+
 
 class Server:
     def __init__(self, host, port):
@@ -51,6 +54,7 @@ class Server:
 
         # Load certificate chain
         self.ssl_context.load_cert_chain(certfile="python_server/server.cert", keyfile="python_server/server.key")
+
 
     def create_message(self, message_type):
         self.counter = self.counter + 1
@@ -95,6 +99,7 @@ class Server:
                 "counter": self.counter
             }
             return message
+  
         
     async def start_server(self):
         """ Begin the server and its core functions. """
@@ -113,6 +118,7 @@ class Server:
             # Wait until server is manually stopped
             await server_task
     
+   
     async def wait_for_shutdown(self):
         """ Shutdown waiter to keep the server alive. """
         
@@ -121,6 +127,7 @@ class Server:
             
         except asyncio.CancelledError:
             print("Server is shutting down.")
+
 
     async def connect_to_neighbourhood(self):
         """ Connect to all servers in the neighbourhood. """
@@ -155,6 +162,7 @@ class Server:
                     
                 except:
                     print(f"Could not reach server: {connecting_hostname}")
+
 
     async def handle_client(self, websocket, path):   
         """ Handle all messages. """
@@ -199,6 +207,7 @@ class Server:
             # TODO: Handle client disconnects
             pass
 
+
     async def handle_server_connect(self, message_data):
         """ Handle SERVER_CONNECT messages. """
         
@@ -220,6 +229,7 @@ class Server:
         except:
             print(f"Failed to send message to neighbor: {connecting_hostname}")
         
+
     async def handle_hello(self, websocket, message_data):
         """ Handle HELLO messages. """
          
@@ -235,18 +245,20 @@ class Server:
         # Log join event
         print(f"Client connected with public key: {pub_key}")
 
+
     async def handle_public_chat(self, message):
         """ Handle PUBLIC_CHAT messages. """
         
         # Send public chat message to all clients
         for _, client_socket in self.clients.items():
             await client_socket.send(json.dumps(message))
-            
+       
     async def handle_client_list_request(self, websocket):
         """ Handle CLIENT_LIST_REQUEST messages (respond with CLIENT_LIST). """
         
         client_list_message = self.create_message(MessageType.CLIENT_LIST)
         await websocket.send(json.dumps(client_list_message))       
+  
   
     async def handle_client_update_request(self, message_data):
         """ Handle CLIENT_UPDATE_REQUEST messages (respond with CLIENT_UPDATE). """
@@ -255,6 +267,7 @@ class Server:
         client_update_message = self.create_message(MessageType.CLIENT_UPDATE)
         
         await self.servers[connecting_hostname].send(json.dumps(client_update_message))
+  
   
     async def handle_client_update(self, message_data):
         """ Handle CLIENT_UPDATE message. """
@@ -265,6 +278,7 @@ class Server:
         self.all_clients[hostname] = client_list
         print(f"Updated client list to: {self.all_clients}")  
   
+  
     async def propagate_message(self, message):
         """ Propogate a message to all connected clients of the server. """
         
@@ -273,6 +287,7 @@ class Server:
                 await server_socket.send(message)
             except Exception as e:
                 print(f"Failed to send message to neighbor: {hostname} {e}")
+
 
 if __name__ == "__main__":
     # Read port from the command line
