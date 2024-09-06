@@ -27,13 +27,11 @@ inline void cli(Connection &&connection, Client &&client,
 
         std::string input;
         std::getline(std::cin, input);
-
         std::stringstream input_stream(input);
 
-        std::string command;
-        input_stream >> command;
-        // we dont trim trailing whistepsace because tom has outdated c stdlib
-        auto text = std::string{input_stream.str()};
+        std::string command, text;
+        input_stream >> command >> std::ws;
+        std::getline(input_stream, text);
 
         if (command == "public_chat") {
 

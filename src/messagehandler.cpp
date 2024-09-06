@@ -35,7 +35,10 @@ auto MessageHandler::handle_public_chat(Message &&message) const -> void {
         return;
     }
 
-    std::cout << "Recieved public chat" << std::endl;
+    const auto &data = static_cast<const PublicChatData &>(message.data());
+
+    std::cout << "[PUBLIC_CHAT] " << data.public_key() << ": " << data.message()
+              << std::endl;
 }
 
 auto MessageHandler::handle_client_list(Message &&message) const -> void {

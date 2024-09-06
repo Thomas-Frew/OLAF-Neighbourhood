@@ -63,6 +63,14 @@ class PublicChatData : public MessageData {
             j.at("message").get<std::string_view>());
     }
 
+    inline auto message() const noexcept -> std::string_view {
+        return this->m_message;
+    };
+
+    inline auto public_key() const noexcept -> std::string_view {
+        return this->m_public_key;
+    };
+
   private:
     std::string m_public_key;
     std::string m_message;
