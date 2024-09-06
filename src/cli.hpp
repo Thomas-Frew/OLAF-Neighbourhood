@@ -15,8 +15,6 @@ inline void cli(Connection &&connection, Client &&client,
         connection.write(message.to_json().dump(4));
     }
 
-    std::cerr << "Hello established!" << std::endl;
-
     // Request list of online users
     {
         auto message_data = std::make_unique<ClientListRequestData>();
@@ -24,8 +22,6 @@ inline void cli(Connection &&connection, Client &&client,
                         std::move(message_data)};
         connection.write(message.to_json().dump(4));
     }
-
-    std::cerr << "Online users requested" << std::endl;
 
     while (running) {
 

@@ -190,7 +190,7 @@ class Server:
 
         try:
             async for message in websocket:
-                print(f"Message recieved: {message}")
+                # print(f"Message recieved: {message}") # DEBUG
                 message_json = json.loads(message)
                 message_type = MessageType(message_json.get('type'))
                 message_data = message_json.get('data')
@@ -211,7 +211,6 @@ class Server:
                         await self.handle_public_chat(message_json)
 
                     elif message_type == MessageType.CLIENT_LIST_REQUEST:
-                        print("Handling client list request")
                         await self.handle_client_list_request(websocket)
 
                     elif message_type == MessageType.CLIENT_UPDATE_REQUEST:
@@ -306,9 +305,7 @@ class Server:
     async def handle_client_list_request(self, websocket):
         """ Handle CLIENT_LIST_REQUEST messages (respond with CLIENT_LIST). """
 
-        print("Creating message")
         client_list_message = self.create_message(MessageType.CLIENT_LIST)
-        print(f"Sending message:\n{json.dumps(client_list_message)}")
         await websocket.send(json.dumps(client_list_message))
 
     async def handle_client_update_request(self, message_data):
