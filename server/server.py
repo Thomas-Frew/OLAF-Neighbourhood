@@ -83,11 +83,12 @@ class Server:
         elif (message_type == MessageType.CLIENT_LIST):
             message = {
                 "type": MessageType.CLIENT_LIST.value,
-                "data": {
-                    "servers": self.all_clients
-                },
-                "signature": signature,
-                "counter": self.counter
+                "servers": [
+                    {
+                        "address": address,
+                        "clients": client_list
+                    } for (address, client_list) in self.all_clients.items()
+                ]
             }
             return message
 
@@ -210,6 +211,7 @@ class Server:
                         await self.handle_public_chat(message_json)
 
                     elif message_type == MessageType.CLIENT_LIST_REQUEST:
+                        print("Handling client list request")
                         await self.handle_client_list_request(websocket)
 
                     elif message_type == MessageType.CLIENT_UPDATE_REQUEST:
@@ -304,7 +306,9 @@ class Server:
     async def handle_client_list_request(self, websocket):
         """ Handle CLIENT_LIST_REQUEST messages (respond with CLIENT_LIST). """
 
+        print("Creating message")
         client_list_message = self.create_message(MessageType.CLIENT_LIST)
+        print(f"Sending message:\n{json.dumps(client_list_message)}")
         await websocket.send(json.dumps(client_list_message))
 
     async def handle_client_update_request(self, message_data):

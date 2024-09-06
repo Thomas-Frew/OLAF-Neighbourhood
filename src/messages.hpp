@@ -39,10 +39,8 @@ class HelloData : public MessageData {
     explicit HelloData(std::string_view public_key)
         : m_public_key(public_key) {}
 
-    static std::unique_ptr<HelloData> from_json(const nlohmann::json &j) {
-        return std::make_unique<HelloData>(
-            j.at("public_key").get<std::string_view>());
-    }
+    static auto
+    from_json(const nlohmann::json &j) -> std::unique_ptr<HelloData>;
 
   private:
     std::string m_public_key;
@@ -57,11 +55,8 @@ class PublicChatData : public MessageData {
                             std::string_view message)
         : m_public_key(public_key), m_message(message) {}
 
-    static std::unique_ptr<PublicChatData> from_json(const nlohmann::json &j) {
-        return std::make_unique<PublicChatData>(
-            j.at("public_key").get<std::string_view>(),
-            j.at("message").get<std::string_view>());
-    }
+    static auto
+    from_json(const nlohmann::json &j) -> std::unique_ptr<PublicChatData>;
 
     inline auto message() const noexcept -> std::string_view {
         return this->m_message;
@@ -76,26 +71,34 @@ class PublicChatData : public MessageData {
     std::string m_message;
 };
 
-class ClientListRequest : public MessageData {
+class ClientListRequestData : public MessageData {
   public:
     constexpr auto type() const -> MessageType;
     auto to_json() const -> nlohmann::json;
 
-    static std::unique_ptr<ClientListRequest>
-    from_json(const nlohmann::json &j) {
-        return std::make_unique<ClientListRequest>();
-    }
+    static auto from_json(const nlohmann::json &j)
+        -> std::unique_ptr<ClientListRequestData>;
 };
 
-class ClientList : public MessageData {
+class ClientListData : public MessageData {
   public:
     constexpr auto type() const -> MessageType;
     auto to_json() const -> nlohmann::json;
 
-    static std::unique_ptr<ClientListRequest>
-    from_json(const nlohmann::json &j) {
-        return std::make_unique<ClientListRequest>();
+    explicit ClientListData(
+        std::map<std::string_view, std::vector<std::string_view>> &&online_list)
+        : m_online_list(std::move(online_list)) {}
+
+    static auto
+    from_json(const nlohmann::json &j) -> std::unique_ptr<ClientListData>;
+
+    auto users() const noexcept
+        -> const std::map<std::string_view, std::vector<std::string_view>> & {
+        return this->m_online_list;
     }
+
+  private:
+    std::map<std::string_view, std::vector<std::string_view>> m_online_list;
 };
 
 class Message {

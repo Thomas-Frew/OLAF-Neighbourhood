@@ -46,7 +46,15 @@ auto MessageHandler::handle_client_list(Message &&message) const -> void {
         return;
     }
 
-    std::cout << "Recieved client list" << std::endl;
+    const auto &data = static_cast<const ClientListData &>(message.data());
+
+    std::cout << "[ONLINE USERS]";
+    for (const auto &[server, client_list] : data.users()) {
+        for (auto client : client_list) {
+            std::cout << '\n' << client << '@' << server;
+        }
+    }
+    std::cout << std::endl;
 }
 
 auto MessageHandler::verify_message(const Message &message) const -> bool {
