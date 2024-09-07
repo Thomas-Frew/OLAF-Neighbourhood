@@ -6,7 +6,7 @@
 
 auto MessageHandler::handle_message(std::string_view raw_message) const noexcept
     -> void {
-    std::cerr << "[MESSAGE RECEIVED] " << raw_message << std::endl;
+    // std::cerr << "[MESSAGE RECEIVED] " << raw_message << std::endl; // DEBUG
     try {
         auto message = Message::from_json(nlohmann::json::parse(raw_message));
 
@@ -35,7 +35,10 @@ auto MessageHandler::handle_public_chat(Message &&message) const -> void {
         return;
     }
 
-    std::cout << "Recieved public chat" << std::endl;
+    const auto &data = static_cast<const PublicChatData &>(message.data());
+
+    std::cout << "[PUBLIC_CHAT] " << data.public_key() << ": " << data.message()
+              << std::endl;
 }
 
 auto MessageHandler::handle_client_list(Message &&message) const -> void {
@@ -43,7 +46,15 @@ auto MessageHandler::handle_client_list(Message &&message) const -> void {
         return;
     }
 
-    std::cout << "Recieved client list" << std::endl;
+    const auto &data = static_cast<const ClientListData &>(message.data());
+
+    std::cout << "[ONLINE USERS]";
+    for (const auto &[server, client_list] : data.users()) {
+        for (auto client : client_list) {
+            std::cout << '\n' << client << '@' << server;
+        }
+    }
+    std::cout << std::endl;
 }
 
 auto MessageHandler::verify_message(const Message &message) const -> bool {

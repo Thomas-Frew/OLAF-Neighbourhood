@@ -17,7 +17,7 @@ inline void cli(Connection &&connection, Client &&client,
 
     // Request list of online users
     {
-        auto message_data = std::make_unique<ClientListRequest>();
+        auto message_data = std::make_unique<ClientListRequestData>();
         Message message{MessageType::CLIENT_LIST_REQUEST,
                         std::move(message_data)};
         connection.write(message.to_json().dump(4));
@@ -27,13 +27,11 @@ inline void cli(Connection &&connection, Client &&client,
 
         std::string input;
         std::getline(std::cin, input);
-
         std::stringstream input_stream(input);
 
-        std::string command;
-        input_stream >> command;
-        // we dont trim trailing whistepsace because tom has outdated c stdlib
-        auto text = std::string{input_stream.str()};
+        std::string command, text;
+        input_stream >> command >> std::ws;
+        std::getline(input_stream, text);
 
         if (command == "public_chat") {
 
@@ -47,7 +45,7 @@ inline void cli(Connection &&connection, Client &&client,
 
         } else if (command == "online_list") {
 
-            auto message_data = std::make_unique<ClientListRequest>();
+            auto message_data = std::make_unique<ClientListRequestData>();
 
             Message message{MessageType::CLIENT_LIST_REQUEST,
                             std::move(message_data)};

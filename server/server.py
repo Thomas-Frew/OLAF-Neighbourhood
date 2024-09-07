@@ -83,11 +83,12 @@ class Server:
         elif (message_type == MessageType.CLIENT_LIST):
             message = {
                 "type": MessageType.CLIENT_LIST.value,
-                "data": {
-                    "servers": self.all_clients
-                },
-                "signature": signature,
-                "counter": self.counter
+                "servers": [
+                    {
+                        "address": address,
+                        "clients": client_list
+                    } for (address, client_list) in self.all_clients.items()
+                ]
             }
             return message
 
@@ -189,7 +190,7 @@ class Server:
 
         try:
             async for message in websocket:
-                print(f"Message recieved: {message}")
+                # print(f"Message recieved: {message}") # DEBUG
                 message_json = json.loads(message)
                 message_type = MessageType(message_json.get('type'))
                 message_data = message_json.get('data')

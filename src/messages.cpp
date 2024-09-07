@@ -1,4 +1,7 @@
 #include "messages.hpp"
+#include <map>
+#include <nlohmann/json.hpp>
+#include <string_view>
 
 constexpr auto HelloData::type() const -> MessageType {
     return MessageType::HELLO;
@@ -6,10 +9,10 @@ constexpr auto HelloData::type() const -> MessageType {
 constexpr auto PublicChatData::type() const -> MessageType {
     return MessageType::PUBLIC_CHAT;
 }
-constexpr auto ClientListRequest::type() const -> MessageType {
+constexpr auto ClientListRequestData::type() const -> MessageType {
     return MessageType::CLIENT_LIST_REQUEST;
 }
-constexpr auto ClientList::type() const -> MessageType {
+constexpr auto ClientListData::type() const -> MessageType {
     return MessageType::CLIENT_LIST;
 }
 
@@ -62,18 +65,47 @@ auto HelloData::to_json() const -> nlohmann::json {
                           {"public_key", this->m_public_key}};
 }
 
+auto HelloData::from_json(const nlohmann::json &j)
+    -> std::unique_ptr<HelloData> {
+    return std::make_unique<HelloData>(
+        j.at("public_key").get<decltype(HelloData::m_public_key)>());
+}
+
 auto PublicChatData::to_json() const -> nlohmann::json {
     return nlohmann::json{{"type", message_type_to_string(this->type())},
                           {"public_key", this->m_public_key},
                           {"message", this->m_message}};
 }
 
-auto ClientListRequest::to_json() const -> nlohmann::json {
+auto PublicChatData::from_json(const nlohmann::json &j)
+    -> std::unique_ptr<PublicChatData> {
+    return std::make_unique<PublicChatData>(
+        j.at("public_key").get<decltype(PublicChatData::m_public_key)>(),
+        j.at("message").get<decltype(PublicChatData::m_message)>());
+}
+
+auto ClientListRequestData::to_json() const -> nlohmann::json {
     return nlohmann::json{{"type", message_type_to_string(this->type())}};
 }
 
-auto ClientList::to_json() const -> nlohmann::json {
+auto ClientListRequestData::from_json(const nlohmann::json &j)
+    -> std::unique_ptr<ClientListRequestData> {
+    return std::make_unique<ClientListRequestData>();
+}
+
+auto ClientListData::to_json() const -> nlohmann::json {
     throw std::runtime_error("unimplemented");
+}
+
+auto ClientListData::from_json(const nlohmann::json &j)
+    -> std::unique_ptr<ClientListData> {
+    std::map<std::string_view, std::vector<std::string_view>> online_users;
+    for (const auto &server : j.at("servers")) {
+        online_users.emplace(
+            server.at("address").get<std::string_view>(),
+            server.at("clients").get<std::vector<std::string_view>>());
+    }
+    return std::make_unique<ClientListData>(std::move(online_users));
 }
 
 auto Message::to_json() const -> nlohmann::json {
@@ -103,11 +135,11 @@ auto Message::from_json(const nlohmann::json &j) -> Message {
     } break;
     case MessageType::CLIENT_LIST_REQUEST: {
         static_assert(is_signed(MessageType::CLIENT_LIST_REQUEST) == false);
-        data = ClientListRequest::from_json(j);
+        data = ClientListRequestData::from_json(j);
     } break;
     case MessageType::CLIENT_LIST: {
         static_assert(is_signed(MessageType::CLIENT_LIST) == false);
-        data = ClientList::from_json(j);
+        data = ClientListData::from_json(j);
     } break;
     }
 
