@@ -39,8 +39,8 @@ class HelloData : public MessageData {
     explicit HelloData(std::string_view public_key)
         : m_public_key(public_key) {}
 
-    static auto
-    from_json(const nlohmann::json &j) -> std::unique_ptr<HelloData>;
+    static auto from_json(const nlohmann::json &j)
+        -> std::unique_ptr<HelloData>;
 
   private:
     std::string m_public_key;
@@ -55,8 +55,8 @@ class PublicChatData : public MessageData {
                             std::string_view message)
         : m_public_key(public_key), m_message(message) {}
 
-    static auto
-    from_json(const nlohmann::json &j) -> std::unique_ptr<PublicChatData>;
+    static auto from_json(const nlohmann::json &j)
+        -> std::unique_ptr<PublicChatData>;
 
     inline auto message() const noexcept -> std::string_view {
         return this->m_message;
@@ -89,8 +89,8 @@ class ClientListData : public MessageData {
         std::map<std::string_view, std::vector<std::string_view>> &&online_list)
         : m_online_list(std::move(online_list)) {}
 
-    static auto
-    from_json(const nlohmann::json &j) -> std::unique_ptr<ClientListData>;
+    static auto from_json(const nlohmann::json &j)
+        -> std::unique_ptr<ClientListData>;
 
     auto users() const noexcept
         -> const std::map<std::string_view, std::vector<std::string_view>> & {
