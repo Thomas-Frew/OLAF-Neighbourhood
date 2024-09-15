@@ -12,7 +12,7 @@ class MessageType(Enum):
     # Client-made messages
     HELLO = "hello"
     PUBLIC_CHAT = "public_chat"
-    PRIVATE_CHAT = "private_chat"
+    PRIVATE_CHAT = "chat"
     CLIENT_LIST_REQUEST = "client_list_request"
 
     # Server-made messages
@@ -336,13 +336,18 @@ class Server:
         """ Handle PRIVATE_CHAT message """
         
         message_data = message.get('data')
+        chat_data = message_data.get('chat')
+        destination_clients = chat_data.get('participants')
         destination_servers = message_data.get('destination_servers')
         unique_destinations = list(set(destination_servers))
         
-        for destination in unique_destinations:
-            await self.servers[destination].send(
-                json.dumps(message)
-            )
+        print(message_data)
+        print(destination_servers)
+                
+        for i in range(len(destination_servers)):
+            if (destination_servers[i] == self.hostname):
+                pub_key = destination_clients[i]
+                await self.clients[pub_key].send(json.dumps(message))
         
     async def propagate_message(self, message):
         """ Propogate a message to all connected clients of the server. """

@@ -43,6 +43,21 @@ inline void cli(Connection &&connection, Client &&client,
             nlohmann::json message_json = message.to_json();
             connection.write(message_json.dump(4));
 
+        } else if (command == "chat") {
+
+            std::vector<std::string> servers = {"localhost:1443"};
+            std::vector<std::string> keys = {"Key1"};
+            std::vector<std::string> part = {"default"};
+
+            auto message_data = std::make_unique<PrivateChatData>(
+                std::move(servers), "0", std::move(keys), std::move(part),
+                "Hello!");
+
+            Message message{MessageType::PRIVATE_CHAT, std::move(message_data)};
+
+            nlohmann::json message_json = message.to_json();
+            connection.write(message_json.dump(4));
+
         } else if (command == "online_list") {
 
             auto message_data = std::make_unique<ClientListRequestData>();
@@ -52,6 +67,7 @@ inline void cli(Connection &&connection, Client &&client,
 
             nlohmann::json message_json = message.to_json();
             connection.write(message_json.dump(4));
+
         } else {
             std::cerr << "Unknown command: " << command << "\n";
             std::cerr << "Known commands are:\n";
