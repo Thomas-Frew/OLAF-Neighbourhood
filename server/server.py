@@ -195,11 +195,11 @@ class Server:
                 message_json = json.loads(message)
                 message_type = MessageType(message_json.get('type'))
                 message_data = message_json.get('data')
-
+                
                 # Ignore if message was identical to the most recent one
                 # (DOS and loop protection)
-                if (hash_string_sha256(message) != self.last_message):
-                    self.last_message = hash_string_sha256(message)
+                if (message_json != self.last_message):
+                    self.last_message = message_json
 
                     # Handle message
                     if message_type == MessageType.SERVER_CONNECT:
@@ -341,14 +341,27 @@ class Server:
         destination_servers = message_data.get('destination_servers')
         unique_destinations = list(set(destination_servers))
         
-        print(message_data)
-        print(destination_servers)
-                
-        for i in range(len(destination_servers)):
-            if (destination_servers[i] == self.hostname):
-                pub_key = destination_clients[i]
-                await self.clients[pub_key].send(json.dumps(message))
+        # The first participant (sender) always gets their message reflected back to them
+        sender_pub_key = destination_clients[0]
+        await self.clients[sender_pub_key].send(json.dumps(message))
         
+        # Propgate the message locally to all recieving users
+        for i in range(len(destination_servers)):
+            if destination_servers[i] == self.hostname:
+                pub_key = destination_clients[i+1]
+                
+                if self.clients.get(pub_key) is not None:
+                    await self.clients[pub_key].send(json.dumps(message))
+                else:
+                    print(f"Failed to propogate private chat to recipient {pub_key}")
+
+        # Propogate message to all receiving servers
+        for destination in unique_destinations:
+            if self.servers.get(destination) is not None:
+                await self.servers[destination].send(json.dumps(message))
+            elif destination != self.hostname:
+                print(f"Failed to propogate private chat to host {destination}")
+            
     async def propagate_message(self, message):
         """ Propogate a message to all connected clients of the server. """
 

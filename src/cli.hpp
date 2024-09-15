@@ -45,13 +45,34 @@ inline void cli(Connection &&connection, Client &&client,
 
         } else if (command == "chat") {
 
-            std::vector<std::string> servers = {"localhost:1443"};
-            std::vector<std::string> keys = {"Key1"};
-            std::vector<std::string> part = {"default"};
+            std::string canonical_user;
+            std::stringstream text_stream(text);
+
+            uint16_t num_users;
+            text_stream >> num_users;
+
+            std::vector<std::string> servers;
+            std::vector<std::string> symm_keys;
+            std::vector<std::string> participants = {client.getPublicKey()};
+
+            for (uint16_t i = 0; i < num_users; i++) {
+                text_stream >> canonical_user >> std::ws;
+
+                size_t pos = canonical_user.find("@");
+                std::string pub_key = canonical_user.substr(0, pos);
+                std::string server = canonical_user.substr(pos + 1);
+                std::string symm_key = "temp_key";
+
+                servers.push_back(server);
+                symm_keys.push_back(symm_key);
+                participants.push_back(pub_key);
+            }
+
+            std::getline(text_stream, text);
 
             auto message_data = std::make_unique<PrivateChatData>(
-                std::move(servers), "0", std::move(keys), std::move(part),
-                "Hello!");
+                std::move(servers), "0", std::move(symm_keys),
+                std::move(participants), text);
 
             Message message{MessageType::PRIVATE_CHAT, std::move(message_data)};
 

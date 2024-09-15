@@ -6,7 +6,7 @@
 
 auto MessageHandler::handle_message(std::string_view raw_message) const noexcept
     -> void {
-    std::cerr << "[MESSAGE RECEIVED] " << raw_message << std::endl; // DEBUG
+    // std::cerr << "[MESSAGE RECEIVED] " << raw_message << std::endl; // DEBUG
     try {
         auto message = Message::from_json(nlohmann::json::parse(raw_message));
 
