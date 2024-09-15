@@ -92,9 +92,12 @@ inline void cli(Connection &&connection, Client &&client,
         } else {
             std::cerr << "Unknown command: " << command << "\n";
             std::cerr << "Known commands are:\n";
-            std::cerr << "\tpublic_chat [message]\tSend a message to everyone "
+            std::cerr << "\tpublic_chat [message]\tSend a message to everyone"
                          "in the neighbourhood\n";
             std::cerr << "\tonline_list\tList the currently online users"
+                      << std::endl;
+            std::cerr << "\tchat [N] [user1@hostname1] ... [userN@hostnameN] "
+                         "[message]\tSend a message to certain users"
                       << std::endl;
         }
     }
