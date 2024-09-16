@@ -22,13 +22,6 @@ class MessageType(Enum):
     CLIENT_UPDATE = "client_update"
 
 
-def hash_string_sha256(input_string):
-    """ Hashing helper. """
-    sha256 = hashlib.sha256()
-    sha256.update(input_string.encode('utf-8'))
-    return sha256.hexdigest()
-
-
 class Server:
     def __init__(self, host, port):
         # Suppress specific deprecation warnings for SSL options
@@ -343,7 +336,8 @@ class Server:
         
         # The first participant (sender) always gets their message reflected back to them
         sender_pub_key = destination_clients[0]
-        await self.clients[sender_pub_key].send(json.dumps(message))
+        if self.clients.get(sender_pub_key) is not None:
+            await self.clients[sender_pub_key].send(json.dumps(message))
         
         # Propgate the message locally to all recieving users
         for i in range(len(destination_servers)):
