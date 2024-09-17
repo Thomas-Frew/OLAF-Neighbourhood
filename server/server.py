@@ -12,6 +12,7 @@ class MessageType(Enum):
     # Client-made messages
     HELLO = "hello"
     PUBLIC_CHAT = "public_chat"
+    PRIVATE_CHAT = "chat"
     CLIENT_LIST_REQUEST = "client_list_request"
 
     # Server-made messages
@@ -19,13 +20,6 @@ class MessageType(Enum):
     CLIENT_LIST = "client_list"
     CLIENT_UPDATE_REQUEST = "client_update_request"
     CLIENT_UPDATE = "client_update"
-
-
-def hash_string_sha256(input_string):
-    """ Hashing helper. """
-    sha256 = hashlib.sha256()
-    sha256.update(input_string.encode('utf-8'))
-    return sha256.hexdigest()
 
 
 class Server:
@@ -194,11 +188,11 @@ class Server:
                 message_json = json.loads(message)
                 message_type = MessageType(message_json.get('type'))
                 message_data = message_json.get('data')
-
+                
                 # Ignore if message was identical to the most recent one
                 # (DOS and loop protection)
-                if (hash_string_sha256(message) != self.last_message):
-                    self.last_message = hash_string_sha256(message)
+                if (message_json != self.last_message):
+                    self.last_message = message_json
 
                     # Handle message
                     if message_type == MessageType.SERVER_CONNECT:
@@ -209,6 +203,9 @@ class Server:
 
                     elif message_type == MessageType.PUBLIC_CHAT:
                         await self.handle_public_chat(message_json)
+                        
+                    elif message_type == MessageType.PRIVATE_CHAT:
+                        await self.handle_private_chat(message_json)
 
                     elif message_type == MessageType.CLIENT_LIST_REQUEST:
                         await self.handle_client_list_request(websocket)
@@ -327,7 +324,38 @@ class Server:
 
         self.all_clients[hostname] = client_list
         print(f"Updated client list to: {self.all_clients}")
+        
+    async def handle_private_chat(self, message):
+        """ Handle PRIVATE_CHAT message """
+        
+        message_data = message.get('data')
+        chat_data = message_data.get('chat')
+        destination_clients = chat_data.get('participants')
+        destination_servers = message_data.get('destination_servers')
+        unique_destinations = list(set(destination_servers))
+        
+        # The first participant (sender) always gets their message reflected back to them
+        sender_pub_key = destination_clients[0]
+        if self.clients.get(sender_pub_key) is not None:
+            await self.clients[sender_pub_key].send(json.dumps(message))
+        
+        # Propgate the message locally to all recieving users
+        for i in range(len(destination_servers)):
+            if destination_servers[i] == self.hostname:
+                pub_key = destination_clients[i+1]
+                
+                if self.clients.get(pub_key) is not None:
+                    await self.clients[pub_key].send(json.dumps(message))
+                else:
+                    print(f"Failed to propogate private chat to recipient {pub_key}")
 
+        # Propogate message to all receiving servers
+        for destination in unique_destinations:
+            if self.servers.get(destination) is not None:
+                await self.servers[destination].send(json.dumps(message))
+            elif destination != self.hostname:
+                print(f"Failed to propogate private chat to host {destination}")
+            
     async def propagate_message(self, message):
         """ Propogate a message to all connected clients of the server. """
 

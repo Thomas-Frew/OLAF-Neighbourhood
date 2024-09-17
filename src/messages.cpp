@@ -9,6 +9,9 @@ constexpr auto HelloData::type() const -> MessageType {
 constexpr auto PublicChatData::type() const -> MessageType {
     return MessageType::PUBLIC_CHAT;
 }
+constexpr auto PrivateChatData::type() const -> MessageType {
+    return MessageType::PRIVATE_CHAT;
+}
 constexpr auto ClientListRequestData::type() const -> MessageType {
     return MessageType::CLIENT_LIST_REQUEST;
 }
@@ -24,6 +27,9 @@ auto message_type_to_string(MessageType type) -> std::string_view {
     case MessageType::PUBLIC_CHAT: {
         return MessageTypeString::public_chat;
     } break;
+    case MessageType::PRIVATE_CHAT: {
+        return MessageTypeString::private_chat;
+    } break;
     case MessageType::CLIENT_LIST_REQUEST: {
         return MessageTypeString::client_list_request;
     } break;
@@ -38,6 +44,7 @@ auto string_to_message_type(std::string_view type) -> MessageType {
     static const auto map = std::map<std::string_view, MessageType>{
         {MessageTypeString::hello, MessageType::HELLO},
         {MessageTypeString::public_chat, MessageType::PUBLIC_CHAT},
+        {MessageTypeString::private_chat, MessageType::PRIVATE_CHAT},
         {MessageTypeString::client_list_request,
          MessageType::CLIENT_LIST_REQUEST},
         {MessageTypeString::client_list, MessageType::CLIENT_LIST},
@@ -53,6 +60,8 @@ constexpr auto is_signed(MessageType type) -> bool {
     case MessageType::CLIENT_LIST_REQUEST:
         return false;
     case MessageType::HELLO:
+        [[fallthrough]];
+    case MessageType::PRIVATE_CHAT:
         [[fallthrough]];
     case MessageType::PUBLIC_CHAT:
         return true;
@@ -108,6 +117,33 @@ auto ClientListData::from_json(const nlohmann::json &j)
     return std::make_unique<ClientListData>(std::move(online_users));
 }
 
+auto PrivateChatData::to_json() const -> nlohmann::json {
+
+    nlohmann::json chat_data = nlohmann::json{
+        {"participants", this->m_participants}, {"message", this->m_message}};
+
+    return nlohmann::json{{"type", message_type_to_string(this->type())},
+                          {"destination_servers", this->m_destination_servers},
+                          {"iv", this->m_iv},
+                          {"symm_keys", this->m_symm_keys},
+                          {"chat", chat_data}};
+}
+
+auto PrivateChatData::from_json(const nlohmann::json &j)
+    -> std::unique_ptr<PrivateChatData> {
+
+    nlohmann::json chat_data = j.at("chat");
+
+    return std::make_unique<PrivateChatData>(
+        j.at("destination_servers")
+            .get<decltype(PrivateChatData::m_destination_servers)>(),
+        j.at("iv").get<decltype(PrivateChatData::m_iv)>(),
+        j.at("symm_keys").get<decltype(PrivateChatData::m_symm_keys)>(),
+        chat_data.at("participants")
+            .get<decltype(PrivateChatData::m_participants)>(),
+        chat_data.at("message").get<decltype(PrivateChatData::m_message)>());
+}
+
 auto Message::to_json() const -> nlohmann::json {
     if (is_signed(this->type())) {
         return nlohmann::json{{"type", message_type_to_string(this->type())},
@@ -132,6 +168,10 @@ auto Message::from_json(const nlohmann::json &j) -> Message {
     case MessageType::PUBLIC_CHAT: {
         static_assert(is_signed(MessageType::PUBLIC_CHAT) == true);
         data = PublicChatData::from_json(j.at("data"));
+    } break;
+    case MessageType::PRIVATE_CHAT: {
+        static_assert(is_signed(MessageType::PRIVATE_CHAT) == true);
+        data = PrivateChatData::from_json(j.at("data"));
     } break;
     case MessageType::CLIENT_LIST_REQUEST: {
         static_assert(is_signed(MessageType::CLIENT_LIST_REQUEST) == false);
