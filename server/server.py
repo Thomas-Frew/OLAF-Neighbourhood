@@ -67,51 +67,51 @@ class Server:
         self.counter = self.counter + 1
         signature = "temporary_signature"
 
-        if (message_type == MessageType.SERVER_HELLO):
-            message = {
-                "type": MessageType.SERVER_HELLO.value,
-                "data": {
-                    "hostname": self.hostname
-                },
-                "signature": signature,
-                "counter": self.counter
-            }
-            return message
+        match message_type:
+            case MessageType.SERVER_HELLO:
+                return {
+                    "type": MessageType.SERVER_HELLO.value,
+                    "data": {
+                        "hostname": self.hostname
+                    },
+                    "signature": signature,
+                    "counter": self.counter
+                }
 
-        elif (message_type == MessageType.CLIENT_LIST):
-            message = {
-                "type": MessageType.CLIENT_LIST.value,
-                "servers": [
-                    {
-                        "address": address,
-                        "clients": client_list
-                    } for (address, client_list) in self.all_clients.items()
-                ]
-            }
-            return message
+            case MessageType.CLIENT_LIST:
+                return {
+                    "type": MessageType.CLIENT_LIST.value,
+                    "servers": [
+                        {
+                            "address": address,
+                            "clients": client_list
+                        } for address, client_list in self.all_clients.items()
+                    ]
+                }
 
-        elif (message_type == MessageType.CLIENT_UPDATE_REQUEST):
-            message = {
-                "type": MessageType.CLIENT_UPDATE_REQUEST.value,
-                "data": {
-                    "hostname": self.hostname
-                },
-                "signature": signature,
-                "counter": self.counter
-            }
-            return message
+            case MessageType.CLIENT_UPDATE_REQUEST:
+                return {
+                    "type": MessageType.CLIENT_UPDATE_REQUEST.value,
+                    "data": {
+                        "hostname": self.hostname
+                    },
+                    "signature": signature,
+                    "counter": self.counter
+                }
 
-        elif (message_type == MessageType.CLIENT_UPDATE):
-            message = {
-                "type": MessageType.CLIENT_UPDATE.value,
-                "data": {
-                    "hostname": self.hostname,
-                    "clients": list(self.clients.keys())
-                },
-                "signature": signature,
-                "counter": self.counter
-            }
-            return message
+            case MessageType.CLIENT_UPDATE:
+                return {
+                    "type": MessageType.CLIENT_UPDATE.value,
+                    "data": {
+                        "hostname": self.hostname,
+                        "clients": list(self.clients.keys())
+                    },
+                    "signature": signature,
+                    "counter": self.counter
+                }
+
+            case _:
+                print(f"Cannot create message of type {message_type}")
 
     async def start_server(self):
         """ Begin the server and its core functions. """
