@@ -15,7 +15,7 @@ class MessageType(Enum):
     CLIENT_LIST_REQUEST = "client_list_request"
 
     # Server-made messages
-    SERVER_CONNECT = "server_connect"
+    SERVER_HELLO = "server_connect"
     CLIENT_LIST = "client_list"
     CLIENT_UPDATE_REQUEST = "client_update_request"
     CLIENT_UPDATE = "client_update"
@@ -32,11 +32,9 @@ class Server:
     def __init__(self, host, port):
         # Suppress specific deprecation warnings for SSL options
         warnings.filterwarnings("ignore", category=DeprecationWarning,
-                                message="ssl.OP_NO_TLS* options are deprecated"
-                                )
+                                message="ssl.OP_NO_TLS*")
         warnings.filterwarnings("ignore", category=DeprecationWarning,
-                                message="ssl.OP_NO_SSL* options are deprecated"
-                                )
+                                message="ssl.OP_NO_SSL*")
 
         # Server details
         self.host = host
@@ -69,9 +67,9 @@ class Server:
         self.counter = self.counter + 1
         signature = "temporary_signature"
 
-        if (message_type == MessageType.SERVER_CONNECT):
+        if (message_type == MessageType.SERVER_HELLO):
             message = {
-                "type": MessageType.SERVER_CONNECT.value,
+                "type": MessageType.SERVER_HELLO.value,
                 "data": {
                     "hostname": self.hostname
                 },
@@ -119,7 +117,7 @@ class Server:
         """ Begin the server and its core functions. """
 
         server_loop = websockets.serve(
-            self.handle_client, self.host, self.port, ssl=self.ssl_context)
+            self.handle_first, self.host, self.port, ssl=self.ssl_context)
 
         # Create listeners
         async with server_loop:
@@ -146,7 +144,7 @@ class Server:
         """ Connect to all servers in the neighbourhood. """
 
         # Construct messages
-        hello_message = self.create_message(MessageType.SERVER_CONNECT)
+        hello_message = self.create_message(MessageType.SERVER_HELLO)
         client_update_request_message = self.create_message(
             MessageType.CLIENT_UPDATE_REQUEST)
 
@@ -205,59 +203,46 @@ class Server:
             )
 
             # Create listener for server
-            asyncio.create_task(self.handle_client(websocket, "/"))
+            asyncio.create_task(self.listener(websocket, self.handle_server))
 
         except Exception:
             print(f"Could not reach server: {hostname}")
 
-    async def handle_client(self, websocket, path):
-        """ Handle all messages. """
-
+    async def handle_first(self, websocket):
         try:
             async for message in websocket:
-                # print(f"Message recieved: {message}")  # DEBUG
                 message_json = json.loads(message)
                 message_type = MessageType(message_json.get('type'))
                 message_data = message_json.get('data')
 
-                # Ignore if message was identical to the most recent one
-                # (DOS and loop protection)
-                if (hash_string_sha256(message) == self.last_message):
-                    continue
+                match message_type:
+                    case MessageType.HELLO:
+                        await self.handle_hello(websocket, message_data)
+                        print("Handled hello. Returning")
+                        return
+                    case MessageType.SERVER_HELLO:
+                        await self.handle_server_hello(websocket, message_data)
+                        print("Handled server hello. Returning")
+                        return
+                    case _:
+                        print(f"Unestablished client sent message of type: {
+                              message_type}, ignoring")
 
-                self.last_message = hash_string_sha256(message)
+        except Exception as e:
+            print(f"Unestablished connection closed due to error: {e}")
 
-                # Handle message
-                if message_type == MessageType.SERVER_CONNECT:
-                    await self.handle_server_connect(message_data)
+    async def listener(self, websocket, handler):
+        """ Handle messages from clients. """
 
-                elif message_type == MessageType.HELLO:
-                    await self.handle_hello(websocket, message_data)
+        try:
+            async for message in websocket:
+                await handler(websocket, message)
 
-                elif message_type == MessageType.PUBLIC_CHAT:
-                    await self.handle_public_chat(message_json)
-
-                elif message_type == MessageType.CLIENT_LIST_REQUEST:
-                    await self.handle_client_list_request(websocket)
-
-                elif message_type == MessageType.CLIENT_UPDATE_REQUEST:
-                    await self.handle_client_update_request(message_data)
-
-                elif message_type == MessageType.CLIENT_UPDATE:
-                    await self.handle_client_update(message_data)
-
-                else:
-                    print("Message type not recognized")
-
-                # Forward message if appropriate
-                if message_type == MessageType.PUBLIC_CHAT:
-                    await self.propagate_message(message)
-
-        except websocket.ConnectionClosedOK:
+        except websockets.exceptions.ConnectionClosedOK:
             # Connection closed gracefully
             print("Connection closed gracefully")
 
-        except websocket.ConnectionClosedError as e:
+        except websockets.exceptions.ConnectionClosedError as e:
             print(f"Connection closed due to error: {e}")
 
         except Exception as e:
@@ -266,6 +251,64 @@ class Server:
         finally:
             # Ensure client cleanup on disconnect
             await self.handle_client_disconnect(websocket)
+
+    async def handle_client(self, websocket, message):
+        # print(f"Message recieved: {message}")  # DEBUG
+        message_json = json.loads(message)
+        message_type = MessageType(message_json.get('type'))
+        message_data = message_json.get('data')
+
+        # Ignore if message was identical to the most recent one
+        # (DOS and loop protection)
+        if (hash_string_sha256(message) == self.last_message):
+            return
+
+        self.last_message = hash_string_sha256(message)
+
+        # Handle message
+        match message_type:
+            case MessageType.HELLO:
+                await self.handle_hello(websocket, message_data)
+            case MessageType.PUBLIC_CHAT:
+                await self.handle_public_chat(message_json)
+            case MessageType.CLIENT_LIST_REQUEST:
+                await self.handle_client_list_request(websocket)
+            case (MessageType.SERVER_HELLO
+                  | MessageType.CLIENT_UPDATE_REQUEST
+                  | MessageType.CLIENT_UPDATE):
+                print(f"Erroneous message type from client: {message_type}")
+            case _:
+                print(f"Message type not recognized: {message_type}")
+
+        # Forward message if appropriate
+        if message_type == MessageType.PUBLIC_CHAT:
+            await self.propagate_message(message)
+
+    async def handle_server(self, websocket, message):
+        # print(f"Message recieved: {message}")  # DEBUG
+        message_json = json.loads(message)
+        message_type = MessageType(message_json.get('type'))
+        message_data = message_json.get('data')
+
+        # Ignore if message was identical to the most recent one
+        # (DOS and loop protection)
+        if (hash_string_sha256(message) == self.last_message):
+            return
+
+        # Handle message
+        match message_type:
+            case MessageType.PUBLIC_CHAT:
+                await self.handle_public_chat(message_json)
+            case MessageType.CLIENT_UPDATE_REQUEST:
+                await self.handle_client_update_request(message_data)
+            case MessageType.CLIENT_UPDATE:
+                await self.handle_client_update(message_data)
+            case (MessageType.HELLO
+                  | MessageType.SERVER_HELLO
+                  | MessageType.CLIENT_LIST_REQUEST):
+                print(f"Erroneous message type from server: {message_type}")
+            case _:
+                print(f"Message type not recognized: {message_type}")
 
     async def handle_client_disconnect(self, websocket):
         """ Handle client disconnection. """
@@ -290,13 +333,25 @@ class Server:
                 MessageType.CLIENT_UPDATE)
             await self.propagate_message(json.dumps(client_update_message))
 
-    async def handle_server_connect(self, message_data):
-        """ Handle SERVER_CONNECT messages. """
+    async def handle_server_hello(self, websocket, message_data):
+        """ Handle SERVER_HELLO messages. """
         hostname = message_data.get('hostname')
+        self.servers[hostname] = websocket
+        self.all_clients[hostname] = []
+
+        # Set up new listener
+        new_listener = asyncio.create_task(
+            self.listener(websocket, self.handle_server))
+
         print(f"Server connected with hostname: {hostname}")
+
+        await new_listener
 
     async def handle_hello(self, websocket, message_data):
         """ Handle HELLO messages. """
+
+        # TODO: Verify no duplicate HELLO messages
+        # Also, cannot send other messages prior to HELLO
 
         # Register client
         pub_key = message_data.get('public_key')
@@ -304,11 +359,17 @@ class Server:
 
         self.all_clients[self.hostname].append(pub_key)
 
+        # Set up new listener
+        new_listener = asyncio.create_task(
+            self.listener(websocket, self.handle_client))
+
         client_update_message = self.create_message(MessageType.CLIENT_UPDATE)
         await self.propagate_message(json.dumps(client_update_message))
 
         # Log join event
         print(f"Client connected with public key: {pub_key}")
+
+        await new_listener
 
     async def handle_public_chat(self, message):
         """ Handle PUBLIC_CHAT messages. """
@@ -344,7 +405,9 @@ class Server:
         print(f"Updated client list to: {self.all_clients}")
 
     async def propagate_message(self, message):
-        """ Propogate a message to all connected clients of the server. """
+        """ Propagate a message to all connected clients of the server. """
+
+        # TODO: Proper error handling
 
         server_misses = []
 
