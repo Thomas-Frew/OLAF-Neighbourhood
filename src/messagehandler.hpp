@@ -7,6 +7,7 @@ class MessageHandler {
   private:
     auto verify_message(const Message &message) const -> bool;
     auto handle_public_chat(Message &&message) const -> void;
+    auto handle_private_chat(Message &&message) const -> void;
     auto handle_client_list(Message &&message) const -> void;
 
   public:

@@ -43,6 +43,42 @@ inline void cli(Connection &&connection, Client &&client,
             nlohmann::json message_json = message.to_json();
             connection.write(message_json.dump(4));
 
+        } else if (command == "chat") {
+
+            std::string canonical_user;
+            std::stringstream text_stream(text);
+
+            uint16_t num_users;
+            text_stream >> num_users;
+
+            std::vector<std::string> servers;
+            std::vector<std::string> symm_keys;
+            std::vector<std::string> participants = {client.getPublicKey()};
+
+            for (uint16_t i = 0; i < num_users; i++) {
+                text_stream >> canonical_user >> std::ws;
+
+                size_t pos = canonical_user.find("@");
+                std::string pub_key = canonical_user.substr(0, pos);
+                std::string server = canonical_user.substr(pos + 1);
+                std::string symm_key = "temp_key";
+
+                servers.push_back(server);
+                symm_keys.push_back(symm_key);
+                participants.push_back(pub_key);
+            }
+
+            std::getline(text_stream, text);
+
+            auto message_data = std::make_unique<PrivateChatData>(
+                std::move(servers), "0", std::move(symm_keys),
+                std::move(participants), text);
+
+            Message message{MessageType::PRIVATE_CHAT, std::move(message_data)};
+
+            nlohmann::json message_json = message.to_json();
+            connection.write(message_json.dump(4));
+
         } else if (command == "online_list") {
 
             auto message_data = std::make_unique<ClientListRequestData>();
@@ -52,12 +88,16 @@ inline void cli(Connection &&connection, Client &&client,
 
             nlohmann::json message_json = message.to_json();
             connection.write(message_json.dump(4));
+
         } else {
             std::cerr << "Unknown command: " << command << "\n";
             std::cerr << "Known commands are:\n";
-            std::cerr << "\tpublic_chat [message]\tSend a message to everyone "
+            std::cerr << "\tpublic_chat [message]\tSend a message to everyone"
                          "in the neighbourhood\n";
             std::cerr << "\tonline_list\tList the currently online users"
+                      << std::endl;
+            std::cerr << "\tchat [N] [user1@hostname1] ... [userN@hostnameN] "
+                         "[message]\tSend a message to certain users"
                       << std::endl;
         }
     }

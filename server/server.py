@@ -4,7 +4,6 @@ import json
 import ssl
 import sys
 from enum import Enum
-import hashlib
 import warnings
 
 
@@ -12,6 +11,7 @@ class MessageType(Enum):
     # Client-made messages
     HELLO = "hello"
     PUBLIC_CHAT = "public_chat"
+    PRIVATE_CHAT = "chat"
     CLIENT_LIST_REQUEST = "client_list_request"
 
     # Server-made messages
@@ -33,13 +33,6 @@ class ClientData:
         self.pubkey = pubkey
         # TODO: Identifier should be hashed pubkey
         self.id = pubkey
-
-
-def hash_string_sha256(input_string):
-    """ Hashing helper. """
-    sha256 = hashlib.sha256()
-    sha256.update(input_string.encode('utf-8'))
-    return sha256.hexdigest()
 
 
 class Server:
@@ -290,6 +283,7 @@ class Server:
 
         try:
             async for message in websocket:
+
                 await handler(websocket, message)
 
         except websockets.exceptions.ConnectionClosedOK:
@@ -353,6 +347,8 @@ class Server:
                 await self.handle_client_update_request(message_data)
             case MessageType.CLIENT_UPDATE:
                 await self.handle_client_update(message_data)
+            case MessageType.PRIVATE_CHAT:
+                await self.handle_private_chat(message_data)
             case (MessageType.HELLO
                   | MessageType.SERVER_HELLO
                   | MessageType.CLIENT_LIST_REQUEST):
@@ -386,6 +382,27 @@ class Server:
         self.all_clients[hostname] = client_list
         print(f"Updated client list to: {self.all_clients}")
 
+    async def handle_private_chat_client(self, message, message_data):
+        """ Handle PRIVATE_CHAT message """
+
+        destination_servers = message_data.get('destination_servers')
+
+        # Ensure message is valid
+        if (len(destination_servers) != len(set(destination_servers))):
+            print("Invalid private chat - duplicate servers in list. Ignoring")
+            return
+
+        # Propagate message to servers in the destination server list
+        for hostname in destination_servers:
+            server_data = self.servers[hostname]
+            if server_data is not None:
+                await server_data.websocket.send(json.dumps(message))
+            else:
+                print(f"Could not send message to unknown server {hostname}")
+
+        # Propgate the message locally to all recieving users
+        self.propagate_message_to_clients(message)
+
     async def handle_client(self, websocket, message):
         message_json, message_type, message_data = Server.read_message(message)
 
@@ -395,6 +412,8 @@ class Server:
                 await self.handle_public_chat_client(message_json)
             case MessageType.CLIENT_LIST_REQUEST:
                 await self.handle_client_list_request(websocket)
+            case MessageType.PRIVATE_CHAT:
+                await self.handle_private_chat_client(message, message_data)
             case (MessageType.HELLO
                   | MessageType.SERVER_HELLO
                   | MessageType.CLIENT_UPDATE_REQUEST
