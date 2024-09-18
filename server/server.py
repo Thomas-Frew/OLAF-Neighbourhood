@@ -64,8 +64,6 @@ class Server:
 
         self.counter = 0
 
-        self.last_message = None
-
         # Setup SSL context
         self.ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         self.ssl_context.options |= ssl.OP_NO_SSLv2
@@ -213,7 +211,9 @@ class Server:
             )
 
             # Create listener for server
-            asyncio.create_task(self.listener(websocket, self.handle_server))
+            asyncio.create_task(self.listener(
+                websocket, self.handle_server, self.handle_server_disconnect
+            ))
 
         except Exception:
             print(f"Could not reach server: {hostname}")
@@ -243,105 +243,12 @@ class Server:
         except Exception as e:
             print(f"Unestablished connection closed due to error: {e}")
 
-    async def listener(self, websocket, handler, disconnect_handler):
-        """ Handle messages from clients. """
-
-        try:
-            async for message in websocket:
-                await handler(websocket, message)
-
-        except websockets.exceptions.ConnectionClosedOK:
-            # Connection closed gracefully
-            print("Connection closed gracefully")
-
-        except websockets.exceptions.ConnectionClosedError as e:
-            print(f"Connection closed due to error: {e}")
-
-        except Exception as e:
-            print(f"Internal error, closing connection: {e}")
-
-        finally:
-            # Ensure cleanup on disconnect
-            await disconnect_handler(websocket)
-
-    async def handle_client(self, websocket, message):
-        message_json, message_type, message_data = Server.read_message(message)
-
-        # Handle message
-        match message_type:
-            case MessageType.HELLO:
-                await self.handle_hello(websocket, message_data)
-            case MessageType.PUBLIC_CHAT:
-                await self.handle_public_chat(message_json)
-            case MessageType.CLIENT_LIST_REQUEST:
-                await self.handle_client_list_request(websocket)
-            case (MessageType.SERVER_HELLO
-                  | MessageType.CLIENT_UPDATE_REQUEST
-                  | MessageType.CLIENT_UPDATE):
-                print(f"Erroneous message type from client: {message_type}")
-            case _:
-                print(f"Message type not recognized: {message_type}")
-
-        # Forward message if appropriate
-        if message_type == MessageType.PUBLIC_CHAT:
-            await self.propagate_message(message)
-
-    async def handle_server(self, websocket, message):
-        message_json, message_type, message_data = Server.read_message(message)
-
-        # Handle message
-        match message_type:
-            case MessageType.PUBLIC_CHAT:
-                await self.handle_public_chat(message_json)
-            case MessageType.CLIENT_UPDATE_REQUEST:
-                await self.handle_client_update_request(message_data)
-            case MessageType.CLIENT_UPDATE:
-                await self.handle_client_update(message_data)
-            case (MessageType.HELLO
-                  | MessageType.SERVER_HELLO
-                  | MessageType.CLIENT_LIST_REQUEST):
-                print(f"Erroneous message type from server: {message_type}")
-            case _:
-                print(f"Message type not recognized: {message_type}")
-
-    async def handle_client_disconnect(self, websocket):
-        """ Handle client disconnection. """
-
-        # Find the client by websocket
-        client_id = self.socket_identifier[websocket]
-        self.socket_identifier.remove(websocket)
-
-        # Remove the client
-        self.clients.remove(client_id)
-        self.all_clients[self.hostname].remove(client_id)
-
-        # Log disconnect event
-        print(f"Client disconnected with id: {client_id}")
-
-        # Notify other servers about the update
-        client_update_message = self.create_message(
-            MessageType.CLIENT_UPDATE)
-        await self.propagate_message(json.dumps(client_update_message))
-
-    async def handle_server_disconnect(self, websocket):
-        """ Handle server disconnection. """
-
-        # Find the server by websocket
-        hostname = self.socket_identifier[websocket]
-        self.socket_identifier.remove(websocket)
-
-        # Remove the server
-        self.servers.remove(hostname)
-        self.all_clients.remove(hostname)
-
-        # Log disconnect event
-        print(f"Server disconnected with hostname: {hostname}")
-
     async def handle_server_hello(self, websocket, message_data):
         """ Handle SERVER_HELLO messages. """
         hostname = message_data.get('hostname')
         self.servers[hostname] = ServerData(websocket, hostname)
         self.all_clients[hostname] = []
+        self.socket_identifier[websocket] = hostname
 
         # Set up new listener
         new_listener = asyncio.create_task(self.listener(
@@ -361,6 +268,7 @@ class Server:
         # Register client
         pub_key = message_data.get('public_key')
         self.clients[pub_key] = ClientData(websocket, pub_key)
+        self.socket_identifier[websocket] = pub_key
 
         self.all_clients[self.hostname].append(pub_key)
 
@@ -370,29 +278,97 @@ class Server:
         ))
 
         client_update_message = self.create_message(MessageType.CLIENT_UPDATE)
-        await self.propagate_message(json.dumps(client_update_message))
+        await self.propagate_message_to_servers(client_update_message)
 
         # Log join event
         print(f"Client connected with public key: {pub_key}")
 
         await new_listener
 
-    async def handle_public_chat(self, message):
-        """ Handle PUBLIC_CHAT messages. """
+    async def listener(self, websocket, handler, disconnect_handler):
+        """ Handle messages from clients. """
 
-        # Send public chat message to all clients
-        for client_data in self.clients.values():
-            await client_data.websocket.send(json.dumps(message))
+        try:
+            async for message in websocket:
+                await handler(websocket, message)
 
-    async def handle_client_list_request(self, websocket):
-        """ Handle CLIENT_LIST_REQUEST messages (respond with CLIENT_LIST). """
+        except websockets.exceptions.ConnectionClosedOK:
+            # Connection closed gracefully
+            print("Connection closed gracefully")
 
-        client_list_message = self.create_message(MessageType.CLIENT_LIST)
-        await websocket.send(json.dumps(client_list_message))
+        except websockets.exceptions.ConnectionClosedError as e:
+            print(f"Connection closed due to error: {e}")
+
+        except Exception as e:
+            print(f"Internal error, closing connection: {e}")
+
+        finally:
+            # Ensure cleanup on disconnect
+            print(f"Disconnecting {self.socket_identifier[websocket]}")
+            await disconnect_handler(websocket)
+
+    async def handle_client_disconnect(self, websocket):
+        """ Handle client disconnection. """
+
+        # Find the client by websocket
+        client_id = self.socket_identifier[websocket]
+        del self.socket_identifier[websocket]
+
+        # Remove the client
+        del self.clients[client_id]
+        self.all_clients[self.hostname].remove(client_id)
+
+        # Log disconnect event
+        print(f"Client disconnected with id: {client_id}")
+
+        # Notify other servers about the update
+        client_update_message = self.create_message(
+            MessageType.CLIENT_UPDATE
+        )
+        await self.propagate_message_to_servers(client_update_message)
+
+    async def handle_server_disconnect(self, websocket):
+        """ Handle server disconnection. """
+
+        # Find the server by websocket
+        hostname = self.socket_identifier[websocket]
+        del self.socket_identifier[websocket]
+
+        # Remove the server
+        del self.servers[hostname]
+        del self.all_clients[hostname]
+
+        # Log disconnect event
+        print(f"Server disconnected with hostname: {hostname}")
+
+    async def handle_server(self, websocket, message):
+        message_json, message_type, message_data = Server.read_message(message)
+        print(f"Recieved message from server of type {message_type}")
+
+        # Handle message
+        match message_type:
+            case MessageType.PUBLIC_CHAT:
+                await self.handle_public_chat_server(message_json)
+            case MessageType.CLIENT_UPDATE_REQUEST:
+                await self.handle_client_update_request(message_data)
+            case MessageType.CLIENT_UPDATE:
+                await self.handle_client_update(message_data)
+            case (MessageType.HELLO
+                  | MessageType.SERVER_HELLO
+                  | MessageType.CLIENT_LIST_REQUEST):
+                print(f"Erroneous message type from server: {message_type}")
+            case _:
+                print(f"Message type not recognized: {message_type}")
+
+    async def handle_public_chat_server(self, message):
+        """ Handle PUBLIC_CHAT messages from servers. """
+
+        await self.propagate_message_to_clients(message)
 
     async def handle_client_update_request(self, message_data):
-        """ Handle CLIENT_UPDATE_REQUEST messages """
-        """ respond with CLIENT_UPDATE """
+        """
+        Handle CLIENT_UPDATE_REQUEST messages (respond with CLIENT_UPDATE).
+        """
 
         hostname = message_data.get('hostname')
         client_update_message = self.create_message(MessageType.CLIENT_UPDATE)
@@ -410,26 +386,54 @@ class Server:
         self.all_clients[hostname] = client_list
         print(f"Updated client list to: {self.all_clients}")
 
-    async def propagate_message(self, message):
-        """ Propagate a message to all connected clients of the server. """
-        # TODO: Is this meant to propagate to servers or clients?
+    async def handle_client(self, websocket, message):
+        message_json, message_type, message_data = Server.read_message(message)
 
-        # TODO: Proper error handling
+        # Handle message
+        match message_type:
+            case MessageType.PUBLIC_CHAT:
+                await self.handle_public_chat_client(message_json)
+            case MessageType.CLIENT_LIST_REQUEST:
+                await self.handle_client_list_request(websocket)
+            case (MessageType.HELLO
+                  | MessageType.SERVER_HELLO
+                  | MessageType.CLIENT_UPDATE_REQUEST
+                  | MessageType.CLIENT_UPDATE):
+                print(f"Erroneous message type from client: {message_type}")
+            case _:
+                print(f"Message type not recognized: {message_type}")
 
-        server_misses = []
+    async def handle_public_chat_client(self, message):
+        """ Handle PUBLIC_CHAT messages from clients. """
+
+        await self.propagate_message_to_servers(message)
+        await self.propagate_message_to_clients(message)
+
+    async def handle_client_list_request(self, websocket):
+        """ Handle CLIENT_LIST_REQUEST messages (respond with CLIENT_LIST). """
+
+        client_list_message = self.create_message(MessageType.CLIENT_LIST)
+        await websocket.send(json.dumps(client_list_message))
+
+    async def propagate_message_to_servers(self, message):
+        """ Propagate a message to all servers in the neighbourhood. """
 
         for server_data in self.servers.values():
+            print(f"Propagating message to {server_data.hostname}")
             try:
-                await server_data.websocket.send(message)
+                await server_data.websocket.send(json.dumps(message))
             except Exception as e:
-                print(f"Failed to send message to neighbour {
-                      server_data.hostname}: {e}")
-                server_misses.append(server_data.hostname)
+                print(f"Failed to propagate to {server_data.hostname}: {e}")
 
-        for hostname in server_misses:
-            del self.servers[hostname]
-            del self.all_clients[hostname]
-            print(f"Server disconnected with hostname: {hostname}")
+    async def propagate_message_to_clients(self, message):
+        """ Propagate a message to all connected clients of the server. """
+
+        for client_data in self.clients.values():
+            print(f"Propagating message to client {client_data.id}")
+            try:
+                await client_data.websocket.send(json.dumps(message))
+            except Exception as e:
+                print(f"Failed to propagate to {client_data.id}: {e}")
 
 
 if __name__ == "__main__":
