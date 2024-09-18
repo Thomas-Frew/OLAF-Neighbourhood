@@ -279,7 +279,7 @@ class Server:
         await new_listener
 
     async def listener(self, websocket, handler, disconnect_handler):
-        """ Handle messages from clients. """
+        """ Handle incoming messages. """
 
         try:
             async for message in websocket:
@@ -348,7 +348,7 @@ class Server:
             case MessageType.CLIENT_UPDATE:
                 await self.handle_client_update(message_data)
             case MessageType.PRIVATE_CHAT:
-                await self.handle_private_chat(message_data)
+                await self.handle_private_chat_server(message, message_data)
             case (MessageType.HELLO
                   | MessageType.SERVER_HELLO
                   | MessageType.CLIENT_LIST_REQUEST):
@@ -382,26 +382,10 @@ class Server:
         self.all_clients[hostname] = client_list
         print(f"Updated client list to: {self.all_clients}")
 
-    async def handle_private_chat_client(self, message, message_data):
-        """ Handle PRIVATE_CHAT message """
+    async def handle_private_chat_server(self, message, message_data):
+        """ Handle PRIVATE_CHAT message sent from another server """
 
-        destination_servers = message_data.get('destination_servers')
-
-        # Ensure message is valid
-        if (len(destination_servers) != len(set(destination_servers))):
-            print("Invalid private chat - duplicate servers in list. Ignoring")
-            return
-
-        # Propagate message to servers in the destination server list
-        for hostname in destination_servers:
-            server_data = self.servers[hostname]
-            if server_data is not None:
-                await server_data.websocket.send(json.dumps(message))
-            else:
-                print(f"Could not send message to unknown server {hostname}")
-
-        # Propgate the message locally to all recieving users
-        self.propagate_message_to_clients(message)
+        await self.propagate_message_to_clients(message)
 
     async def handle_client(self, websocket, message):
         message_json, message_type, message_data = Server.read_message(message)
@@ -434,13 +418,39 @@ class Server:
         client_list_message = self.create_message(MessageType.CLIENT_LIST)
         await websocket.send(json.dumps(client_list_message))
 
+    async def handle_private_chat_client(self, message, message_data):
+        """ Handle PRIVATE_CHAT message from client. """
+
+        destination_servers = message_data.get('destination_servers')
+
+        # Ensure message is valid
+        if (len(destination_servers) != len(set(destination_servers))):
+            print("Invalid private chat - duplicate servers in list. Ignoring")
+            return
+
+        # Propagate message to servers in the destination server list
+        for hostname in destination_servers:
+            if hostname == self.hostname:
+                continue
+            server_data = self.servers[hostname]
+            if server_data is not None:
+                await server_data.websocket.send(message)
+            else:
+                print(f"Could not send message to unknown server {hostname}")
+
+        await self.propagate_message_to_clients(message)
+
     async def propagate_message_to_servers(self, message):
         """ Propagate a message to all servers in the neighbourhood. """
 
         for server_data in self.servers.values():
             print(f"Propagating message to {server_data.hostname}")
             try:
-                await server_data.websocket.send(json.dumps(message))
+                match message:
+                    case str(s):
+                        await server_data.websocket.send(s)
+                    case _:
+                        await server_data.websocket.send(json.dumps(message))
             except Exception as e:
                 print(f"Failed to propagate to {server_data.hostname}: {e}")
 
@@ -450,7 +460,11 @@ class Server:
         for client_data in self.clients.values():
             print(f"Propagating message to client {client_data.id}")
             try:
-                await client_data.websocket.send(json.dumps(message))
+                match message:
+                    case str(s):
+                        await client_data.websocket.send(s)
+                    case _:
+                        await client_data.websocket.send(json.dumps(message))
             except Exception as e:
                 print(f"Failed to propagate to {client_data.id}: {e}")
 
