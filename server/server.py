@@ -4,7 +4,6 @@ import json
 import ssl
 import sys
 from enum import Enum
-import hashlib
 import warnings
 
 
@@ -16,36 +15,47 @@ class MessageType(Enum):
     CLIENT_LIST_REQUEST = "client_list_request"
 
     # Server-made messages
-    SERVER_CONNECT = "server_connect"
+    SERVER_HELLO = "server_connect"
     CLIENT_LIST = "client_list"
     CLIENT_UPDATE_REQUEST = "client_update_request"
     CLIENT_UPDATE = "client_update"
+
+
+class ServerData:
+    def __init__(self, websocket, hostname):
+        self.websocket = websocket
+        self.hostname = hostname
+
+
+class ClientData:
+    def __init__(self, websocket, pubkey):
+        self.websocket = websocket
+        self.pubkey = pubkey
+        # TODO: Identifier should be hashed pubkey
+        self.id = pubkey
 
 
 class Server:
     def __init__(self, host, port):
         # Suppress specific deprecation warnings for SSL options
         warnings.filterwarnings("ignore", category=DeprecationWarning,
-                                message="ssl.OP_NO_TLS* options are deprecated"
-                                )
+                                message="ssl.OP_NO_TLS*")
         warnings.filterwarnings("ignore", category=DeprecationWarning,
-                                message="ssl.OP_NO_SSL* options are deprecated"
-                                )
+                                message="ssl.OP_NO_SSL*")
 
         # Server details
         self.host = host
         self.port = port
         self.hostname = f"{host}:{port}"
 
-        self.clients = {}  # Socket -> Client Public Key
-        self.servers = {}  # Socket -> Server Hostname
+        self.clients = {}  # Client Public Key -> Socket
+        self.servers = {}  # Server Hostname -> Socket
+        self.socket_identifier = {}  # WebSocket -> Identifier
 
         self.all_clients = {}  # Server hostname -> User List
         self.all_clients[self.hostname] = []
 
         self.counter = 0
-
-        self.last_message = None
 
         # Setup SSL context
         self.ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -63,57 +73,59 @@ class Server:
         self.counter = self.counter + 1
         signature = "temporary_signature"
 
-        if (message_type == MessageType.SERVER_CONNECT):
-            message = {
-                "type": MessageType.SERVER_CONNECT.value,
-                "data": {
-                    "hostname": self.hostname
-                },
-                "signature": signature,
-                "counter": self.counter
-            }
-            return message
+        # TODO: Implemented 'signed_data' type properly
+        # TODO: Implement signatures for 'signed_data' type
+        match message_type:
+            case MessageType.SERVER_HELLO:
+                return {
+                    "type": MessageType.SERVER_HELLO.value,
+                    "data": {
+                        "hostname": self.hostname
+                    },
+                    "signature": signature,
+                    "counter": self.counter
+                }
 
-        elif (message_type == MessageType.CLIENT_LIST):
-            message = {
-                "type": MessageType.CLIENT_LIST.value,
-                "servers": [
-                    {
-                        "address": address,
-                        "clients": client_list
-                    } for (address, client_list) in self.all_clients.items()
-                ]
-            }
-            return message
+            case MessageType.CLIENT_LIST:
+                return {
+                    "type": MessageType.CLIENT_LIST.value,
+                    "servers": [
+                        {
+                            "address": address,
+                            "clients": client_list
+                        } for address, client_list in self.all_clients.items()
+                    ]
+                }
 
-        elif (message_type == MessageType.CLIENT_UPDATE_REQUEST):
-            message = {
-                "type": MessageType.CLIENT_UPDATE_REQUEST.value,
-                "data": {
-                    "hostname": self.hostname
-                },
-                "signature": signature,
-                "counter": self.counter
-            }
-            return message
+            case MessageType.CLIENT_UPDATE_REQUEST:
+                return {
+                    "type": MessageType.CLIENT_UPDATE_REQUEST.value,
+                    "data": {
+                        "hostname": self.hostname
+                    },
+                    "signature": signature,
+                    "counter": self.counter
+                }
 
-        elif (message_type == MessageType.CLIENT_UPDATE):
-            message = {
-                "type": MessageType.CLIENT_UPDATE.value,
-                "data": {
-                    "hostname": self.hostname,
-                    "clients": list(self.clients.keys())
-                },
-                "signature": signature,
-                "counter": self.counter
-            }
-            return message
+            case MessageType.CLIENT_UPDATE:
+                return {
+                    "type": MessageType.CLIENT_UPDATE.value,
+                    "data": {
+                        "hostname": self.hostname,
+                        "clients": list(self.clients.keys())
+                    },
+                    "signature": signature,
+                    "counter": self.counter
+                }
+
+            case _:
+                print(f"Cannot create message of type {message_type}")
 
     async def start_server(self):
         """ Begin the server and its core functions. """
 
         server_loop = websockets.serve(
-            self.handle_client, self.host, self.port, ssl=self.ssl_context)
+            self.handle_first, self.host, self.port, ssl=self.ssl_context)
 
         # Create listeners
         async with server_loop:
@@ -139,180 +151,225 @@ class Server:
     async def connect_to_neighbourhood(self):
         """ Connect to all servers in the neighbourhood. """
 
-        # Consturct messages
-        connect_message = self.create_message(MessageType.SERVER_CONNECT)
+        # The auth context of the server you are connecting to
+        # TODO: Check if we should use anything non-default
+        auth_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+
+        # TODO: Get the cert of the server you want to connect to
+        auth_context.load_verify_locations(cafile="server.cert")
+
+        # NOTE: Currently, neighbourhood.olaf is a glorified IP list.
+        # This will change. It will include public keys.
+        with open('neighbourhood.olaf', 'r') as file:
+            # Ensure no leading/trailing whitespace
+            hostnames = [line.strip() for line in file]
+
+        # Connect to all servers in the neighbourhood
+        server_listeners = []
+        for hostname in hostnames:
+            # Don't connect to yourself, silly!
+            if (hostname == self.hostname):
+                continue
+
+            server_listeners.append(
+                self.connect_to_server(hostname, auth_context))
+        await asyncio.gather(*server_listeners)
+        print("Done connecting to neighbourhood!")
+
+    async def connect_to_server(self, hostname, auth_context):
+        """ Establish a connection with a remote server """
+
+        # Construct messages
+        hello_message = self.create_message(MessageType.SERVER_HELLO)
         client_update_request_message = self.create_message(
             MessageType.CLIENT_UPDATE_REQUEST)
 
-        # The auth context of the server you are connecting to
-        # TODO: Get the cert of the server you want to connect to
-        auth_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-        auth_context.load_verify_locations(cafile="server.cert")
+        try:
+            websocket = await websockets.connect(
+                f"wss://{hostname}/", ssl=auth_context
+            )
 
-        # Iterate through servers in the list
-        with open('neighbourhood.olaf', 'r') as file:
-            for connecting_hostname in file:
-                # Ensure no leading/trailing whitespace
-                connecting_hostname = connecting_hostname.strip()
+            self.servers[hostname] = ServerData(websocket, hostname)
+            self.all_clients[hostname] = []
+            self.socket_identifier[websocket] = hostname
 
-                # Don't connect to yourself, silly!
-                if (connecting_hostname == self.hostname):
-                    continue
+            # Connect to the server with a two-way channel
+            await websocket.send(
+                json.dumps(hello_message)
+            )
 
-                try:
-                    connecting_websocket = await websockets.connect(
-                        f"wss://{connecting_hostname}", ssl=auth_context
-                    )
+            # Get the online list of users
+            await websocket.send(
+                json.dumps(client_update_request_message)
+            )
 
-                    # Connect to the server with a two-way channel
-                    await connecting_websocket.send(
-                        json.dumps(connect_message)
-                    )
-                    self.servers[connecting_hostname] = connecting_websocket
-                    self.all_clients[connecting_hostname] = []
+            # Create listener for server
+            asyncio.create_task(self.listener(
+                websocket, self.handle_server, self.handle_server_disconnect
+            ))
 
-                    # Get the online list of users
-                    await connecting_websocket.send(
-                        json.dumps(client_update_request_message)
-                    )
+        except Exception:
+            print(f"Could not reach server: {hostname}")
 
-                except Exception:
-                    print(f"Could not reach server: {connecting_hostname}")
+    def read_message(message):
+        message_json = json.loads(message)
+        message_type = MessageType(message_json.get('type'))
+        message_data = message_json.get('data')
+        return message_json, message_type, message_data
 
-    async def handle_client(self, websocket, path):
-        """ Handle all messages. """
+    async def handle_first(self, websocket):
+        """ handle the first message sent by a new connection """
+        try:
+            message = await websocket.recv()
+            message_json, message_type, message_data = Server.read_message(
+                message)
+
+            match message_type:
+                case MessageType.HELLO:
+                    await self.handle_hello(websocket, message_data)
+                case MessageType.SERVER_HELLO:
+                    await self.handle_server_hello(websocket, message_data)
+                case _:
+                    print(f"Unestablished client sent message of type: {
+                        message_type}, closing connection")
+
+        except Exception as e:
+            print(f"Unestablished connection closed due to error: {e}")
+
+    async def handle_server_hello(self, websocket, message_data):
+        """ Handle SERVER_HELLO messages. """
+        hostname = message_data.get('hostname')
+        self.servers[hostname] = ServerData(websocket, hostname)
+        self.all_clients[hostname] = []
+        self.socket_identifier[websocket] = hostname
+
+        # Set up new listener
+        new_listener = asyncio.create_task(self.listener(
+            websocket, self.handle_server, self.handle_server_disconnect
+        ))
+
+        print(f"Server connected with hostname: {hostname}")
+
+        await new_listener
+
+    async def handle_hello(self, websocket, message_data):
+        """ Handle HELLO messages. """
+
+        # TODO: Verify no duplicate HELLO messages
+        # Also, cannot send other messages prior to HELLO
+
+        # Register client
+        pub_key = message_data.get('public_key')
+        self.clients[pub_key] = ClientData(websocket, pub_key)
+        self.socket_identifier[websocket] = pub_key
+
+        self.all_clients[self.hostname].append(pub_key)
+
+        # Set up new listener
+        new_listener = asyncio.create_task(self.listener(
+            websocket, self.handle_client, self.handle_client_disconnect
+        ))
+
+        client_update_message = self.create_message(MessageType.CLIENT_UPDATE)
+        await self.propagate_message_to_servers(client_update_message)
+
+        # Log join event
+        print(f"Client connected with public key: {pub_key}")
+
+        await new_listener
+
+    async def listener(self, websocket, handler, disconnect_handler):
+        """ Handle incoming messages. """
 
         try:
             async for message in websocket:
-                # print(f"Message recieved: {message}") # DEBUG
-                message_json = json.loads(message)
-                message_type = MessageType(message_json.get('type'))
-                message_data = message_json.get('data')
-                
-                # Ignore if message was identical to the most recent one
-                # (DOS and loop protection)
-                if (message_json != self.last_message):
-                    self.last_message = message_json
 
-                    # Handle message
-                    if message_type == MessageType.SERVER_CONNECT:
-                        await self.handle_server_connect(message_data)
+                await handler(websocket, message)
 
-                    elif message_type == MessageType.HELLO:
-                        await self.handle_hello(websocket, message_data)
+        except websockets.exceptions.ConnectionClosedOK:
+            # Connection closed gracefully
+            print("Connection closed gracefully")
 
-                    elif message_type == MessageType.PUBLIC_CHAT:
-                        await self.handle_public_chat(message_json)
-                        
-                    elif message_type == MessageType.PRIVATE_CHAT:
-                        await self.handle_private_chat(message_json)
+        except websockets.exceptions.ConnectionClosedError as e:
+            print(f"Connection closed due to error: {e}")
 
-                    elif message_type == MessageType.CLIENT_LIST_REQUEST:
-                        await self.handle_client_list_request(websocket)
-
-                    elif message_type == MessageType.CLIENT_UPDATE_REQUEST:
-                        await self.handle_client_update_request(message_data)
-
-                    elif message_type == MessageType.CLIENT_UPDATE:
-                        await self.handle_client_update(message_data)
-
-                    else:
-                        print("Message type not recognized")
-
-                    # Forward message if appropriate
-                    if message_type == MessageType.PUBLIC_CHAT:
-                        await self.propagate_message(message)
-
-        except Exception:
-            await self.handle_client_disconnect(websocket)
+        except Exception as e:
+            print(f"Internal error, closing connection: {e}")
 
         finally:
-            # Ensure client cleanup on disconnect
-            await self.handle_client_disconnect(websocket)
+            # Ensure cleanup on disconnect
+            print(f"Disconnecting {self.socket_identifier[websocket]}")
+            await disconnect_handler(websocket)
 
     async def handle_client_disconnect(self, websocket):
         """ Handle client disconnection. """
 
         # Find the client by websocket
-        pub_key_to_remove = None
-        for pub_key, client_socket in self.clients.items():
-            if client_socket == websocket:
-                pub_key_to_remove = pub_key
-                break
+        client_id = self.socket_identifier[websocket]
+        del self.socket_identifier[websocket]
 
-        if pub_key_to_remove:
-            # Remove the client
-            del self.clients[pub_key_to_remove]
-            self.all_clients[self.hostname].remove(pub_key_to_remove)
+        # Remove the client
+        del self.clients[client_id]
+        self.all_clients[self.hostname].remove(client_id)
 
-            # Log disconnect event
-            print(f"Client disconnected with public key: {pub_key_to_remove}")
+        # Log disconnect event
+        print(f"Client disconnected with id: {client_id}")
 
-            # Notify other servers about the update
-            client_update_message = self.create_message(
-                MessageType.CLIENT_UPDATE)
-            await self.propagate_message(json.dumps(client_update_message))
+        # Notify other servers about the update
+        client_update_message = self.create_message(
+            MessageType.CLIENT_UPDATE
+        )
+        await self.propagate_message_to_servers(client_update_message)
 
-    async def handle_server_connect(self, message_data):
-        """ Handle SERVER_CONNECT messages. """
+    async def handle_server_disconnect(self, websocket):
+        """ Handle server disconnection. """
 
-        # Don't connect to yourself, silly!
-        connecting_hostname = message_data.get('hostname')
-        if (connecting_hostname == self.hostname):
-            return
+        # Find the server by websocket
+        hostname = self.socket_identifier[websocket]
+        del self.socket_identifier[websocket]
 
-        try:
-            auth_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-            auth_context.load_verify_locations(
-                cafile="server.cert")
+        # Remove the server
+        del self.servers[hostname]
+        del self.all_clients[hostname]
 
-            connecting_socket = await websockets.connect(
-                f"wss://{connecting_hostname}", ssl=auth_context
-            )
-            self.servers[connecting_hostname] = connecting_socket
-            self.all_clients[connecting_hostname] = []
+        # Log disconnect event
+        print(f"Server disconnected with hostname: {hostname}")
 
-            print(f"Server connected with hostname: {connecting_hostname}")
+    async def handle_server(self, websocket, message):
+        message_json, message_type, message_data = Server.read_message(message)
+        print(f"Recieved message from server of type {message_type}")
 
-        except Exception:
-            print(f"Failed to send message to neighbor: {connecting_hostname}")
+        # Handle message
+        match message_type:
+            case MessageType.PUBLIC_CHAT:
+                await self.handle_public_chat_server(message_json)
+            case MessageType.CLIENT_UPDATE_REQUEST:
+                await self.handle_client_update_request(message_data)
+            case MessageType.CLIENT_UPDATE:
+                await self.handle_client_update(message_data)
+            case MessageType.PRIVATE_CHAT:
+                await self.handle_private_chat_server(message, message_data)
+            case (MessageType.HELLO
+                  | MessageType.SERVER_HELLO
+                  | MessageType.CLIENT_LIST_REQUEST):
+                print(f"Erroneous message type from server: {message_type}")
+            case _:
+                print(f"Message type not recognized: {message_type}")
 
-    async def handle_hello(self, websocket, message_data):
-        """ Handle HELLO messages. """
+    async def handle_public_chat_server(self, message):
+        """ Handle PUBLIC_CHAT messages from servers. """
 
-        # Register client
-        pub_key = message_data.get('public_key')
-        self.clients[pub_key] = websocket
-
-        self.all_clients[self.hostname].append(pub_key)
-
-        client_update_message = self.create_message(MessageType.CLIENT_UPDATE)
-        await self.propagate_message(json.dumps(client_update_message))
-
-        # Log join event
-        print(f"Client connected with public key: {pub_key}")
-
-    async def handle_public_chat(self, message):
-        """ Handle PUBLIC_CHAT messages. """
-
-        # Send public chat message to all clients
-        for _, client_socket in self.clients.items():
-            await client_socket.send(json.dumps(message))
-
-    async def handle_client_list_request(self, websocket):
-        """ Handle CLIENT_LIST_REQUEST messages (respond with CLIENT_LIST). """
-
-        client_list_message = self.create_message(MessageType.CLIENT_LIST)
-        await websocket.send(json.dumps(client_list_message))
+        await self.propagate_message_to_clients(message)
 
     async def handle_client_update_request(self, message_data):
-        """ Handle CLIENT_UPDATE_REQUEST messages """
-        """ respond with CLIENT_UPDATE """
+        """
+        Handle CLIENT_UPDATE_REQUEST messages (respond with CLIENT_UPDATE).
+        """
 
-        connecting_hostname = message_data.get('hostname')
+        hostname = message_data.get('hostname')
         client_update_message = self.create_message(MessageType.CLIENT_UPDATE)
 
-        await self.servers[connecting_hostname].send(
+        await self.servers[hostname].websocket.send(
             json.dumps(client_update_message)
         )
 
@@ -324,54 +381,92 @@ class Server:
 
         self.all_clients[hostname] = client_list
         print(f"Updated client list to: {self.all_clients}")
-        
-    async def handle_private_chat(self, message):
-        """ Handle PRIVATE_CHAT message """
-        
-        message_data = message.get('data')
-        chat_data = message_data.get('chat')
-        destination_clients = chat_data.get('participants')
+
+    async def handle_private_chat_server(self, message, message_data):
+        """ Handle PRIVATE_CHAT message sent from another server """
+
+        await self.propagate_message_to_clients(message)
+
+    async def handle_client(self, websocket, message):
+        message_json, message_type, message_data = Server.read_message(message)
+
+        # Handle message
+        match message_type:
+            case MessageType.PUBLIC_CHAT:
+                await self.handle_public_chat_client(message_json)
+            case MessageType.CLIENT_LIST_REQUEST:
+                await self.handle_client_list_request(websocket)
+            case MessageType.PRIVATE_CHAT:
+                await self.handle_private_chat_client(message, message_data)
+            case (MessageType.HELLO
+                  | MessageType.SERVER_HELLO
+                  | MessageType.CLIENT_UPDATE_REQUEST
+                  | MessageType.CLIENT_UPDATE):
+                print(f"Erroneous message type from client: {message_type}")
+            case _:
+                print(f"Message type not recognized: {message_type}")
+
+    async def handle_public_chat_client(self, message):
+        """ Handle PUBLIC_CHAT messages from clients. """
+
+        await self.propagate_message_to_servers(message)
+        await self.propagate_message_to_clients(message)
+
+    async def handle_client_list_request(self, websocket):
+        """ Handle CLIENT_LIST_REQUEST messages (respond with CLIENT_LIST). """
+
+        client_list_message = self.create_message(MessageType.CLIENT_LIST)
+        await websocket.send(json.dumps(client_list_message))
+
+    async def handle_private_chat_client(self, message, message_data):
+        """ Handle PRIVATE_CHAT message from client. """
+
         destination_servers = message_data.get('destination_servers')
-        unique_destinations = list(set(destination_servers))
-        
-        # The first participant (sender) always gets their message reflected back to them
-        sender_pub_key = destination_clients[0]
-        if self.clients.get(sender_pub_key) is not None:
-            await self.clients[sender_pub_key].send(json.dumps(message))
-        
-        # Propgate the message locally to all recieving users
-        for i in range(len(destination_servers)):
-            if destination_servers[i] == self.hostname:
-                pub_key = destination_clients[i+1]
-                
-                if self.clients.get(pub_key) is not None:
-                    await self.clients[pub_key].send(json.dumps(message))
-                else:
-                    print(f"Failed to propogate private chat to recipient {pub_key}")
 
-        # Propogate message to all receiving servers
-        for destination in unique_destinations:
-            if self.servers.get(destination) is not None:
-                await self.servers[destination].send(json.dumps(message))
-            elif destination != self.hostname:
-                print(f"Failed to propogate private chat to host {destination}")
-            
-    async def propagate_message(self, message):
-        """ Propogate a message to all connected clients of the server. """
+        # Ensure message is valid
+        if (len(destination_servers) != len(set(destination_servers))):
+            print("Invalid private chat - duplicate servers in list. Ignoring")
+            return
 
-        server_misses = []
+        # Propagate message to servers in the destination server list
+        for hostname in destination_servers:
+            if hostname == self.hostname:
+                continue
+            server_data = self.servers[hostname]
+            if server_data is not None:
+                await server_data.websocket.send(message)
+            else:
+                print(f"Could not send message to unknown server {hostname}")
 
-        for hostname, server_socket in self.servers.items():
+        await self.propagate_message_to_clients(message)
+
+    async def propagate_message_to_servers(self, message):
+        """ Propagate a message to all servers in the neighbourhood. """
+
+        for server_data in self.servers.values():
+            print(f"Propagating message to {server_data.hostname}")
             try:
-                await server_socket.send(message)
-            except Exception:
-                print(f"Failed to send message to neighbor: {hostname}")
-                server_misses.append(hostname)
+                match message:
+                    case str(s):
+                        await server_data.websocket.send(s)
+                    case _:
+                        await server_data.websocket.send(json.dumps(message))
+            except Exception as e:
+                print(f"Failed to propagate to {server_data.hostname}: {e}")
 
-        for hostname in server_misses:
-            del self.servers[hostname]
-            del self.all_clients[hostname]
-            print(f"Server disconnected with hostname: {hostname}")
+    async def propagate_message_to_clients(self, message):
+        """ Propagate a message to all connected clients of the server. """
+
+        for client_data in self.clients.values():
+            print(f"Propagating message to client {client_data.id}")
+            try:
+                match message:
+                    case str(s):
+                        await client_data.websocket.send(s)
+                    case _:
+                        await client_data.websocket.send(json.dumps(message))
+            except Exception as e:
+                print(f"Failed to propagate to {client_data.id}: {e}")
 
 
 if __name__ == "__main__":
