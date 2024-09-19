@@ -1,6 +1,7 @@
 #include "cli.hpp"
 #include "client.hpp"
 #include "connection.hpp"
+#include "data_processing.hpp"
 #include "messagehandler.hpp"
 #include <iostream>
 #include <string>
@@ -11,17 +12,15 @@ int main(int argc, char **argv) {
     // Default settings
     std::string host = "localhost";
     std::string port = "1443";
-    std::string public_key = "default";
+    std::string public_key = loadKeyFromFile("client.pkey");
+    std::string private_key = loadKeyFromFile("client.key");
 
     // Port is customisable
     if (argc > 1) {
         port = argv[1];
     }
     if (argc > 2) {
-        public_key = argv[2];
-    }
-    if (argc > 3) {
-        std::cerr << "Usage: client <port>? <public_key>?" << std::endl;
+        std::cerr << "Usage: client <port>?" << std::endl;
         return EXIT_FAILURE;
     }
 
@@ -48,7 +47,7 @@ int main(int argc, char **argv) {
     });
 
     // Create a client
-    Client client(public_key);
+    Client client(public_key, private_key);
 
     // Begin the command-line interface
     cli(std::move(conn), std::move(client), running);
