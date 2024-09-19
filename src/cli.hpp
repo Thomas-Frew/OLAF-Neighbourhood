@@ -2,6 +2,7 @@
 
 #include "client.hpp"
 #include "connection.hpp"
+#include "data_processing.hpp"
 #include "messages.hpp"
 #include <iostream>
 #include <string>
@@ -14,7 +15,7 @@ inline void cli(Connection &&connection, Client &&client,
 
         uint32_t counter = client.getCounter();
         std::string signature =
-            client.generateSignature(message_data->to_json().dump(), counter);
+            generateSignature(message_data->to_json().dump(), counter);
 
         Message message{MessageType::HELLO, std::move(message_data), signature,
                         counter};
@@ -45,8 +46,8 @@ inline void cli(Connection &&connection, Client &&client,
                 std::make_unique<PublicChatData>(client.getPublicKey(), text);
 
             uint32_t counter = client.getCounter();
-            std::string signature = client.generateSignature(
-                message_data->to_json().dump(), counter);
+            std::string signature =
+                generateSignature(message_data->to_json().dump(), counter);
 
             Message message{MessageType::PUBLIC_CHAT, std::move(message_data),
                             signature, counter};
@@ -85,8 +86,8 @@ inline void cli(Connection &&connection, Client &&client,
                 std::move(participants), text);
 
             uint32_t counter = client.getCounter();
-            std::string signature = client.generateSignature(
-                message_data->to_json().dump(), counter);
+            std::string signature =
+                generateSignature(message_data->to_json().dump(), counter);
 
             Message message{MessageType::PRIVATE_CHAT, std::move(message_data),
                             signature, counter};
