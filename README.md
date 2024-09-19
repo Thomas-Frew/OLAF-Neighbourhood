@@ -46,7 +46,7 @@ The client CLI supports the following commands:
 ## Server
 
 ### Server Setup
-The server requires a 2048-bit RSA private key, and a certificate. These are stored in `python-server/server.key` and `python-server/server.cert` respectively.
+The server requires a 2048-bit RSA private key, public key, and a certificate. These are stored in `python-server/server.key` and `python-server/server.cert` respectively.
 
 You can generate them with the following commands:
 ```bash
@@ -54,6 +54,7 @@ mkdir ssl
 openssl genrsa -out python-server/server.key 2048
 openssl req -new -key python-server/server.key -out python-server/server.csr
 openssl x509 -req -days 30 -in python-server/server.csr -signkey python-server/server.key -out python-server/server.cert
+openssl rsa -in server.key -pubout -out server.pkey
 ```
 
 The server also required a file containing all hostnames of servers in their neighbourhood (in the form `host:port`). These are stored in `python-server/neighbourhood.olaf` as plaintext.
