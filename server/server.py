@@ -7,6 +7,10 @@ from enum import Enum
 import warnings
 import hashlib
 import base64
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.backends import default_backend
+
 
 class MessageType(Enum):
     # Client-made messages
@@ -35,19 +39,40 @@ class ClientData:
         # TODO: Identifier should be hashed pubkey
         self.id = pubkey
 
+def sign_message(private_key, message):
+    message = message.encode()
+    signature = private_key.sign(
+        message,
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()),
+            salt_length=32
+        ),
+        hashes.SHA256()
+    )
+    return signature
 
-def sha256(input_string):
-    sha256_hash = hashlib.sha256()
-    sha256_hash.update(input_string.encode('utf-8'))
-    return sha256_hash.hexdigest()
+def verify_signature(public_key, message, signature):
+    message = message.encode()
+    try:
+        public_key.verify(
+            signature,
+            message,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=32
+            ),
+            hashes.SHA256()
+        )
+        return True
+    except Exception as e:
+        print(f"Verify error: {e}")
+        return False
+    
+def base64_encode(input_bytes):
+    return base64.b64encode(input_bytes).decode('utf-8')
 
-def base64_encode(input_string):
-    encoded_data = base64.b64encode(input_string.encode('utf-8'))
-    return encoded_data.decode('utf-8')
-
-def generateSignature(data_string, counter):
-    input_string = data_string+str(counter)
-    return base64_encode(sha256(input_string))
+def base64_decode(input_string):
+    return base64.b64decode(input_string)
 
 class Server:
     def __init__(self, host, port):
@@ -82,7 +107,15 @@ class Server:
         # Load certificate chain
         self.ssl_context.load_cert_chain(
             certfile="server.cert", keyfile="server.key")
+        
+        # Load private key
+        with open("server.key", "rb") as key_file:
+            self.private_key = serialization.load_pem_private_key(key_file.read(), password=None, backend=default_backend())
 
+        # Load public key
+        with open("server.pkey", "rb") as key_file:
+            self.public_key = serialization.load_pem_public_key(key_file.read(), backend=default_backend())
+            
         # Lookup table for message signedness
         self.message_signed = {
             MessageType.HELLO: True, 
@@ -101,11 +134,12 @@ class Server:
         match message_type:
             case MessageType.SERVER_HELLO:
                 message_data = { "hostname": self.hostname }
-                data_string = json.dumps(message_data, separators=(',', ':'))  #TODO: Standardise in the protocol
+                data_string = json.dumps(message_data, separators=(',', ':')) + str(self.counter) #TODO: Standardise in the protocol
+                signature = sign_message(self.private_key, data_string)
                 return {
                     "type": MessageType.SERVER_HELLO.value,
                     "data": message_data,
-                    "signature": generateSignature(data_string, self.counter),
+                    "signature": base64_encode(signature),
                     "counter": self.counter
                 }
 
@@ -122,21 +156,23 @@ class Server:
 
             case MessageType.CLIENT_UPDATE_REQUEST:
                 message_data = { "hostname": self.hostname }
-                data_string = json.dumps(message_data, separators=(',', ':'))  #TODO: Standardise in the protocol
+                data_string = json.dumps(message_data, separators=(',', ':')) + str(self.counter) #TODO: Standardise in the protocol
+                signature = sign_message(self.private_key, data_string)
                 return {
                     "type": MessageType.CLIENT_UPDATE_REQUEST.value,
                     "data": message_data,
-                    "signature": generateSignature(data_string, self.counter),
+                    "signature": base64_encode(signature),
                     "counter": self.counter
                 }
 
             case MessageType.CLIENT_UPDATE:
                 message_data = { "hostname": self.hostname, "clients": list(self.clients.keys()) }
-                data_string = json.dumps(message_data, separators=(',', ':'))  #TODO: Standardise in the protocol
+                data_string = json.dumps(message_data, separators=(',', ':')) + str(self.counter) #TODO: Standardise in the protocol
+                signature = sign_message(self.private_key, data_string)
                 return {
                     "type": MessageType.CLIENT_UPDATE.value,
                     "data": message_data,
-                    "signature": generateSignature(data_string, self.counter),
+                    "signature": base64_encode(signature),
                     "counter": self.counter
                 }
 
@@ -230,8 +266,8 @@ class Server:
                 websocket, self.handle_server, self.handle_server_disconnect
             ))
 
-        except Exception:
-            print(f"Could not reach server: {hostname}")
+        except Exception as e:
+            print(f"Could not reach server: {hostname} {e}")
 
     def read_message(self, message):
         # Decode message    
@@ -241,15 +277,12 @@ class Server:
         
         # Verify signature if required
         if (self.message_signed[message_type]):
-            message_data_str = json.dumps(message_data, separators=(',', ':')) #TODO: Standardise in the protocol
-            message_counter = message_json.get('counter')
-            
-            generated_signature = generateSignature(message_data_str, message_counter)
-            message_signature = message_json.get('signature')
-            
-            if (generated_signature != message_signature):
-                print(f"Message rejected: Generated signature {generated_signature} does not match message signature {message_signature}")
-                return None, None, None
+            data_string = json.dumps(message_data, separators=(',', ':')) + str(message_json.get('counter')) #TODO: Standardise in the protocol
+            signature = message_json.get('signature')
+            verify_result = verify_signature(self.public_key, data_string, base64_decode(signature))
+
+            if (not verify_result):
+                print(f"Warning! Signature could not be verified for message.")
         
         return message_json, message_type, message_data
 
@@ -317,7 +350,6 @@ class Server:
 
         try:
             async for message in websocket:
-
                 await handler(websocket, message)
 
         except websockets.exceptions.ConnectionClosedOK:
