@@ -11,6 +11,7 @@ class Client {
     uint32_t getCounter();
 
     void run();
+    std::string generateSignature(const std::string &input);
 
   private:
     std::string m_public_key;

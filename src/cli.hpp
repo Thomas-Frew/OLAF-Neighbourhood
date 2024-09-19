@@ -11,7 +11,10 @@ inline void cli(Connection &&connection, Client &&client,
     // Send hello message upon connecting [REQUIRED BY PROTOCOL]
     {
         auto message_data = std::make_unique<HelloData>(client.getPublicKey());
-        Message message{MessageType::HELLO, std::move(message_data)};
+        std::string signature =
+            client.generateSignature(message_data->to_json().dump());
+        Message message{MessageType::HELLO, std::move(message_data), signature,
+                        client.getCounter()};
         connection.write(message.to_json().dump(4));
     }
 
@@ -38,10 +41,13 @@ inline void cli(Connection &&connection, Client &&client,
             auto message_data =
                 std::make_unique<PublicChatData>(client.getPublicKey(), text);
 
-            Message message{MessageType::PUBLIC_CHAT, std::move(message_data)};
+            std::string signature =
+                client.generateSignature(message_data->to_json().dump());
 
-            nlohmann::json message_json = message.to_json();
-            connection.write(message_json.dump(4));
+            Message message{MessageType::PUBLIC_CHAT, std::move(message_data),
+                            signature, client.getCounter()};
+
+            connection.write(message.to_json().dump(4));
 
         } else if (command == "chat") {
 
@@ -74,10 +80,13 @@ inline void cli(Connection &&connection, Client &&client,
                 std::move(servers), "0", std::move(symm_keys),
                 std::move(participants), text);
 
-            Message message{MessageType::PRIVATE_CHAT, std::move(message_data)};
+            std::string signature =
+                client.generateSignature(message_data->to_json().dump());
 
-            nlohmann::json message_json = message.to_json();
-            connection.write(message_json.dump(4));
+            Message message{MessageType::PRIVATE_CHAT, std::move(message_data),
+                            signature, client.getCounter()};
+
+            connection.write(message.to_json().dump(4));
 
         } else if (command == "online_list") {
 
@@ -86,8 +95,7 @@ inline void cli(Connection &&connection, Client &&client,
             Message message{MessageType::CLIENT_LIST_REQUEST,
                             std::move(message_data)};
 
-            nlohmann::json message_json = message.to_json();
-            connection.write(message_json.dump(4));
+            connection.write(message.to_json().dump(4));
 
         } else {
             std::cerr << "Unknown command: " << command << "\n";

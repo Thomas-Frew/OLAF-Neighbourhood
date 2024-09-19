@@ -148,8 +148,8 @@ auto Message::to_json() const -> nlohmann::json {
     if (is_signed(this->type())) {
         return nlohmann::json{{"type", message_type_to_string(this->type())},
                               {"data", this->m_data->to_json()},
-                              {"signature", "temporary_signature"},
-                              {"counter", 0}};
+                              {"signature", this->m_signature},
+                              {"counter", this->m_counter}};
     } else {
         return this->m_data->to_json();
     }
