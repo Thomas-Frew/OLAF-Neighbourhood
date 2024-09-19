@@ -17,9 +17,9 @@
 
 inline void handle_openssl_error() { ERR_print_errors_fp(stderr); }
 
-inline bool verify_signature(const std::string &public_key_pem,
-                             const std::string &message,
-                             const std::string &signature) {
+inline bool VerifySignature(const std::string &public_key_pem,
+                            const std::string &message,
+                            const std::string &signature) {
     const EVP_MD *md = EVP_sha256();
     EVP_PKEY *public_key = nullptr;
     BIO *bio = BIO_new_mem_buf(public_key_pem.data(), -1);
@@ -67,8 +67,8 @@ inline bool verify_signature(const std::string &public_key_pem,
     return result;
 }
 
-inline std::string sign_message(const std::string &private_key_pem,
-                                const std::string &message) {
+inline std::string SignMessage(const std::string &private_key_pem,
+                               const std::string &message) {
     const EVP_MD *md = EVP_sha256();
     EVP_PKEY *private_key = nullptr;
     BIO *bio = BIO_new_mem_buf(private_key_pem.data(), -1);
@@ -131,22 +131,6 @@ inline std::string sign_message(const std::string &private_key_pem,
     return signature;
 }
 
-inline std::string sha256(const std::string &input) {
-    unsigned char hash[SHA256_DIGEST_LENGTH];
-    SHA256_CTX sha256;
-    SHA256_Init(&sha256);
-    SHA256_Update(&sha256, input.c_str(), input.size());
-    SHA256_Final(hash, &sha256);
-
-    std::stringstream input_stream;
-    for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
-        input_stream << std::hex << std::setw(2) << std::setfill('0')
-                     << (int)hash[i];
-    }
-
-    return input_stream.str();
-}
-
 inline std::string base64Encode(const std::string &input) {
     BIO *bio, *b64;
     BUF_MEM *buffer_ptr;
@@ -167,13 +151,6 @@ inline std::string base64Encode(const std::string &input) {
     BIO_free_all(bio);
 
     return encoded_data;
-}
-
-inline std::string generateSignature(const std::string &data_string,
-                                     const uint32_t counter) {
-    std::string input_string = data_string + std::to_string(counter);
-    std::string sha256_input = sha256(input_string);
-    return base64Encode(sha256_input);
 }
 
 inline std::string loadKeyFromFile(const std::string &filename) {

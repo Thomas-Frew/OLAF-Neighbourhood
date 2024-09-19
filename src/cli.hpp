@@ -18,7 +18,7 @@ inline void cli(Connection &&connection, Client &&client,
         std::string data_string =
             message_data->to_json().dump() + std::to_string(counter);
         std::string signature =
-            sign_message(client.getPrivateKey(), data_string);
+            SignMessage(client.getPrivateKey(), data_string);
         std::string base64_signature = base64Encode(signature);
 
         Message message{MessageType::HELLO, std::move(message_data),
@@ -53,7 +53,7 @@ inline void cli(Connection &&connection, Client &&client,
             std::string data_string =
                 message_data->to_json().dump() + std::to_string(counter);
             std::string signature =
-                sign_message(client.getPrivateKey(), data_string);
+                SignMessage(client.getPrivateKey(), data_string);
             std::string base64_signature = base64Encode(signature);
 
             Message message{MessageType::PUBLIC_CHAT, std::move(message_data),
@@ -96,7 +96,7 @@ inline void cli(Connection &&connection, Client &&client,
             std::string data_string =
                 message_data->to_json().dump() + std::to_string(counter);
             std::string signature =
-                sign_message(client.getPrivateKey(), data_string);
+                SignMessage(client.getPrivateKey(), data_string);
             std::string base64_signature = base64Encode(signature);
 
             Message message{MessageType::PRIVATE_CHAT, std::move(message_data),
