@@ -45,6 +45,10 @@ def base64_encode(input_string):
     encoded_data = base64.b64encode(input_string.encode('utf-8'))
     return encoded_data.decode('utf-8')
 
+def generateSignature(data_string, counter):
+    input_string = data_string+str(counter)
+    return base64_encode(sha256(input_string))
+
 class Server:
     def __init__(self, host, port):
         # Suppress specific deprecation warnings for SSL options
@@ -79,20 +83,29 @@ class Server:
         self.ssl_context.load_cert_chain(
             certfile="server.cert", keyfile="server.key")
 
+        # Lookup table for message signedness
+        self.message_signed = {
+            MessageType.HELLO: True, 
+            MessageType.PUBLIC_CHAT: True, 
+            MessageType.PRIVATE_CHAT: True,
+            MessageType.CLIENT_LIST_REQUEST: False,
+            MessageType.SERVER_HELLO: True,
+            MessageType.CLIENT_LIST: False,
+            MessageType.CLIENT_UPDATE_REQUEST: True,
+            MessageType.CLIENT_UPDATE: True
+        }
+        
     def create_message(self, message_type):
         self.counter = self.counter + 1
-        signature = "temporary_signature"
 
-        # TODO: Implemented 'signed_data' type properly
-        # TODO: Implement signatures for 'signed_data' type
         match message_type:
             case MessageType.SERVER_HELLO:
+                message_data = { "hostname": self.hostname }
+                data_string = json.dumps(message_data, separators=(',', ':'))  #TODO: Standardise in the protocol
                 return {
                     "type": MessageType.SERVER_HELLO.value,
-                    "data": {
-                        "hostname": self.hostname
-                    },
-                    "signature": signature,
+                    "data": message_data,
+                    "signature": generateSignature(data_string, self.counter),
                     "counter": self.counter
                 }
 
@@ -108,23 +121,22 @@ class Server:
                 }
 
             case MessageType.CLIENT_UPDATE_REQUEST:
+                message_data = { "hostname": self.hostname }
+                data_string = json.dumps(message_data, separators=(',', ':'))  #TODO: Standardise in the protocol
                 return {
                     "type": MessageType.CLIENT_UPDATE_REQUEST.value,
-                    "data": {
-                        "hostname": self.hostname
-                    },
-                    "signature": signature,
+                    "data": message_data,
+                    "signature": generateSignature(data_string, self.counter),
                     "counter": self.counter
                 }
 
             case MessageType.CLIENT_UPDATE:
+                message_data = { "hostname": self.hostname, "clients": list(self.clients.keys()) }
+                data_string = json.dumps(message_data, separators=(',', ':'))  #TODO: Standardise in the protocol
                 return {
                     "type": MessageType.CLIENT_UPDATE.value,
-                    "data": {
-                        "hostname": self.hostname,
-                        "clients": list(self.clients.keys())
-                    },
-                    "signature": signature,
+                    "data": message_data,
+                    "signature": generateSignature(data_string, self.counter),
                     "counter": self.counter
                 }
 
@@ -221,35 +233,23 @@ class Server:
         except Exception:
             print(f"Could not reach server: {hostname}")
 
-    def read_message(message):
-        # Lookup table for message signedness
-        message_signed = {
-            MessageType.HELLO: True, 
-            MessageType.PUBLIC_CHAT: True, 
-            MessageType.PRIVATE_CHAT: True,
-            MessageType.CLIENT_LIST_REQUEST: False,
-            MessageType.SERVER_HELLO: False, #TODO: Make true
-            MessageType.CLIENT_LIST: False,
-            MessageType.CLIENT_UPDATE_REQUEST: False, #TODO: Make true
-            MessageType.CLIENT_UPDATE: False #TODO: Make true
-        }
-            
+    def read_message(self, message):
         # Decode message    
         message_json = json.loads(message)
         message_type = MessageType(message_json.get('type'))
         message_data = message_json.get('data')
         
         # Verify signature if required
-        if (message_signed[message_type]):
+        if (self.message_signed[message_type]):
             message_data_str = json.dumps(message_data, separators=(',', ':')) #TODO: Standardise in the protocol
             message_counter = message_json.get('counter')
             
-            input_string = message_data_str+str(message_counter)
-            generated_signature = base64_encode(sha256(input_string))
+            generated_signature = generateSignature(message_data_str, message_counter)
             message_signature = message_json.get('signature')
             
             if (generated_signature != message_signature):
                 print(f"Message rejected: Generated signature {generated_signature} does not match message signature {message_signature}")
+                return None, None, None
         
         return message_json, message_type, message_data
 
@@ -257,8 +257,7 @@ class Server:
         """ handle the first message sent by a new connection """
         try:
             message = await websocket.recv()
-            message_json, message_type, message_data = Server.read_message(
-                message)
+            message_json, message_type, message_data = self.read_message(message)
 
             match message_type:
                 case MessageType.HELLO:
@@ -371,7 +370,7 @@ class Server:
         print(f"Server disconnected with hostname: {hostname}")
 
     async def handle_server(self, websocket, message):
-        message_json, message_type, message_data = Server.read_message(message)
+        message_json, message_type, message_data = self.read_message(message)
         print(f"Recieved message from server of type {message_type}")
 
         # Handle message
@@ -423,7 +422,7 @@ class Server:
         await self.propagate_message_to_clients(message)
 
     async def handle_client(self, websocket, message):
-        message_json, message_type, message_data = Server.read_message(message)
+        message_json, message_type, message_data = self.read_message(message)
 
         # Handle message
         match message_type:
