@@ -50,7 +50,9 @@ std::string Client::getPublicKey() { return this->m_public_key; }
 
 uint32_t Client::getCounter() { return this->m_counter++; }
 
-std::string Client::generateSignature(const std::string &input) {
-    std::string sha256_input = sha256(input);
+std::string Client::generateSignature(const std::string &data_string,
+                                      const uint32_t counter) {
+    std::string input_string = data_string + std::to_string(counter);
+    std::string sha256_input = sha256(input_string);
     return base64_encode(sha256_input);
 }

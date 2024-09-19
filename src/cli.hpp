@@ -11,10 +11,13 @@ inline void cli(Connection &&connection, Client &&client,
     // Send hello message upon connecting [REQUIRED BY PROTOCOL]
     {
         auto message_data = std::make_unique<HelloData>(client.getPublicKey());
+
+        uint32_t counter = client.getCounter();
         std::string signature =
-            client.generateSignature(message_data->to_json().dump());
+            client.generateSignature(message_data->to_json().dump(), counter);
+
         Message message{MessageType::HELLO, std::move(message_data), signature,
-                        client.getCounter()};
+                        counter};
         connection.write(message.to_json().dump(4));
     }
 
@@ -41,15 +44,16 @@ inline void cli(Connection &&connection, Client &&client,
             auto message_data =
                 std::make_unique<PublicChatData>(client.getPublicKey(), text);
 
-            std::string signature =
-                client.generateSignature(message_data->to_json().dump());
+            uint32_t counter = client.getCounter();
+            std::string signature = client.generateSignature(
+                message_data->to_json().dump(), counter);
 
             Message message{MessageType::PUBLIC_CHAT, std::move(message_data),
-                            signature, client.getCounter()};
+                            signature, counter};
 
             connection.write(message.to_json().dump(4));
 
-        } else if (command == "chat") {
+        } else if (command == "private_chat" || command == "chat") {
 
             std::string canonical_user;
             std::stringstream text_stream(text);
@@ -80,11 +84,12 @@ inline void cli(Connection &&connection, Client &&client,
                 std::move(servers), "0", std::move(symm_keys),
                 std::move(participants), text);
 
-            std::string signature =
-                client.generateSignature(message_data->to_json().dump());
+            uint32_t counter = client.getCounter();
+            std::string signature = client.generateSignature(
+                message_data->to_json().dump(), counter);
 
             Message message{MessageType::PRIVATE_CHAT, std::move(message_data),
-                            signature, client.getCounter()};
+                            signature, counter};
 
             connection.write(message.to_json().dump(4));
 

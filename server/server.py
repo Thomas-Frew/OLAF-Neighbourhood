@@ -5,7 +5,8 @@ import ssl
 import sys
 from enum import Enum
 import warnings
-
+import hashlib
+import base64
 
 class MessageType(Enum):
     # Client-made messages
@@ -35,6 +36,15 @@ class ClientData:
         self.id = pubkey
 
 
+def sha256(input_string):
+    sha256_hash = hashlib.sha256()
+    sha256_hash.update(input_string.encode('utf-8'))
+    return sha256_hash.hexdigest()
+
+def base64_encode(input_string):
+    encoded_data = base64.b64encode(input_string.encode('utf-8'))
+    return encoded_data.decode('utf-8')
+
 class Server:
     def __init__(self, host, port):
         # Suppress specific deprecation warnings for SSL options
@@ -56,7 +66,7 @@ class Server:
         self.all_clients[self.hostname] = []
 
         self.counter = 0
-
+        
         # Setup SSL context
         self.ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         self.ssl_context.options |= ssl.OP_NO_SSLv2
@@ -212,9 +222,35 @@ class Server:
             print(f"Could not reach server: {hostname}")
 
     def read_message(message):
+        # Lookup table for message signedness
+        message_signed = {
+            MessageType.HELLO: True, 
+            MessageType.PUBLIC_CHAT: True, 
+            MessageType.PRIVATE_CHAT: True,
+            MessageType.CLIENT_LIST_REQUEST: False,
+            MessageType.SERVER_HELLO: False, #TODO: Make true
+            MessageType.CLIENT_LIST: False,
+            MessageType.CLIENT_UPDATE_REQUEST: False, #TODO: Make true
+            MessageType.CLIENT_UPDATE: False #TODO: Make true
+        }
+            
+        # Decode message    
         message_json = json.loads(message)
         message_type = MessageType(message_json.get('type'))
         message_data = message_json.get('data')
+        
+        # Verify signature if required
+        if (message_signed[message_type]):
+            message_data_str = json.dumps(message_data, separators=(',', ':')) #TODO: Standardise in the protocol
+            message_counter = message_json.get('counter')
+            
+            input_string = message_data_str+str(message_counter)
+            generated_signature = base64_encode(sha256(input_string))
+            message_signature = message_json.get('signature')
+            
+            if (generated_signature != message_signature):
+                print(f"Message rejected: Generated signature {generated_signature} does not match message signature {message_signature}")
+        
         return message_json, message_type, message_data
 
     async def handle_first(self, websocket):
