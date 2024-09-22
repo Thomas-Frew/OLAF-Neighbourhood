@@ -1,7 +1,6 @@
 #include "cli.hpp"
 #include "client.hpp"
 #include "connection.hpp"
-#include "data_processing.hpp"
 #include "messagehandler.hpp"
 #include <iostream>
 #include <string>
@@ -12,8 +11,8 @@ int main(int argc, char **argv) {
     // Default settings
     std::string host = "localhost";
     std::string port = "1443";
-    std::string public_key = loadKeyFromFile("client.pkey");
-    std::string private_key = loadKeyFromFile("client.key");
+    std::string public_key = load_key("client.pkey");
+    std::string private_key = load_key("client.key");
 
     // Port is customisable
     if (argc > 1) {

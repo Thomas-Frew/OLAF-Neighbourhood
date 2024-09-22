@@ -11,18 +11,17 @@ inline void cli(Connection &&connection, Client &&client,
                 std::atomic<bool> &running) {
     // Send hello message upon connecting [REQUIRED BY PROTOCOL]
     {
-        auto message_data = std::make_unique<HelloData>(client.getPublicKey());
+        auto message_data = std::make_unique<HelloData>(client.getIdentifier());
 
         uint32_t counter = client.getCounter();
 
         std::string data_string =
             message_data->to_json().dump() + std::to_string(counter);
         std::string signature =
-            SignMessage(client.getPrivateKey(), data_string);
-        std::string base64_signature = base64Encode(signature);
+            sign_message(client.getPrivateKey(), data_string);
 
-        Message message{MessageType::HELLO, std::move(message_data),
-                        base64_signature, counter};
+        Message message{MessageType::HELLO, std::move(message_data), signature,
+                        counter};
         connection.write(message.to_json().dump(4));
     }
 
@@ -47,17 +46,16 @@ inline void cli(Connection &&connection, Client &&client,
         if (command == "public_chat") {
 
             auto message_data =
-                std::make_unique<PublicChatData>(client.getPublicKey(), text);
+                std::make_unique<PublicChatData>(client.getIdentifier(), text);
 
             uint32_t counter = client.getCounter();
             std::string data_string =
                 message_data->to_json().dump() + std::to_string(counter);
             std::string signature =
-                SignMessage(client.getPrivateKey(), data_string);
-            std::string base64_signature = base64Encode(signature);
+                sign_message(client.getPrivateKey(), data_string);
 
             Message message{MessageType::PUBLIC_CHAT, std::move(message_data),
-                            base64_signature, counter};
+                            signature, counter};
 
             connection.write(message.to_json().dump(4));
 
@@ -71,7 +69,7 @@ inline void cli(Connection &&connection, Client &&client,
 
             std::vector<std::string> servers;
             std::vector<std::string> symm_keys;
-            std::vector<std::string> participants = {client.getPublicKey()};
+            std::vector<std::string> participants = {client.getIdentifier()};
 
             for (uint16_t i = 0; i < num_users; i++) {
                 text_stream >> canonical_user >> std::ws;
@@ -96,11 +94,10 @@ inline void cli(Connection &&connection, Client &&client,
             std::string data_string =
                 message_data->to_json().dump() + std::to_string(counter);
             std::string signature =
-                SignMessage(client.getPrivateKey(), data_string);
-            std::string base64_signature = base64Encode(signature);
+                sign_message(client.getPrivateKey(), data_string);
 
             Message message{MessageType::PRIVATE_CHAT, std::move(message_data),
-                            base64_signature, counter};
+                            signature, counter};
 
             connection.write(message.to_json().dump(4));
 
