@@ -11,7 +11,7 @@ inline void cli(Connection &&connection, Client &&client,
                 std::atomic<bool> &running) {
     // Send hello message upon connecting [REQUIRED BY PROTOCOL]
     {
-        auto message_data = std::make_unique<HelloData>(client.getIdentifier());
+        auto message_data = std::make_unique<HelloData>(client.getPublicKey());
 
         uint32_t counter = client.getCounter();
 
