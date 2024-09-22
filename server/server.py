@@ -7,8 +7,8 @@ from enum import Enum
 import warnings
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
-
 import base64
+import hashlib
 from cryptography.hazmat.primitives import  hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 
@@ -42,6 +42,11 @@ class DataProcessing():
         )
         return signature
 
+    def sha256(input_string):
+        sha256_hash = hashlib.sha256()
+        sha256_hash.update(input_string.encode('utf-8'))
+        return sha256_hash.hexdigest()
+
     def base64_encode(input_bytes):
         return base64.b64encode(input_bytes).decode('utf-8')
 
@@ -70,11 +75,10 @@ class ServerData:
 
 
 class ClientData:
-    def __init__(self, websocket, pubkey):
+    def __init__(self, websocket, public_key):
         self.websocket = websocket
-        self.pubkey = pubkey
-        # TODO: Identifier should be hashed pubkey
-        self.id = pubkey
+        self.public_key = public_key
+        self.id = DataProcessing.base64_encode(DataProcessing.sha256(public_key).encode())
 
 class Server:
     def __init__(self, host, port):
@@ -93,7 +97,7 @@ class Server:
         self.servers = {}  # Server Hostname -> Socket
         self.socket_identifier = {}  # WebSocket -> Identifier
 
-        self.all_clients = {}  # Server hostname -> User List
+        self.all_clients = {}  # Server hostname -> User id List
         self.all_clients[self.hostname] = []
 
         self.counter = 0
@@ -285,19 +289,7 @@ class Server:
         message_json = json.loads(message)
         message_type = MessageType(message_json.get('type'))
         message_data = message_json.get('data')
-        
-        # Verify signature if required
-        if (self.message_signed[message_type]):
-            data_string = json.dumps(message_data, separators=(',', ':')) + str(message_json.get('counter')) #TODO: Standardise in the protocol
-            
-            base64_signature = message_json.get('signature')
-            signature = DataProcessing.base64_decode(base64_signature)
-            
-            verify_result = DataProcessing.verify_signature(self.public_key, data_string, signature)
 
-            if (not verify_result):
-                print(f"Warning! Signature could not be verified for message.")
-        
         return message_json, message_type, message_data
 
     async def handle_first(self, websocket):
@@ -337,14 +329,15 @@ class Server:
         """ Handle HELLO messages. """
 
         # TODO: Verify no duplicate HELLO messages
-        # Also, cannot send other messages prior to HELLO
+        # A`ls`o, cannot send other messages prior to HELLO
 
         # Register client
-        pub_key = message_data.get('public_key')
-        self.clients[pub_key] = ClientData(websocket, pub_key)
-        self.socket_identifier[websocket] = pub_key
-
-        self.all_clients[self.hostname].append(pub_key)
+        public_key = message_data.get('public_key')
+        client_data = ClientData(websocket, public_key)
+        
+        self.clients[client_data.id] = client_data
+        self.socket_identifier[websocket] = client_data.id
+        self.all_clients[self.hostname].append(client_data.id)
 
         # Set up new listener
         new_listener = asyncio.create_task(self.listener(
@@ -355,7 +348,7 @@ class Server:
         await self.propagate_message_to_servers(client_update_message)
 
         # Log join event
-        print(f"Client connected with public key: {pub_key}")
+        print(f"Client connected with identifier: {client_data.id}")
 
         await new_listener
 
@@ -414,9 +407,24 @@ class Server:
 
         # Log disconnect event
         print(f"Server disconnected with hostname: {hostname}")
+        
+    def verify_message(self, public_key, message_json, message_type, message_data):
+        data_string = json.dumps(message_data, separators=(',', ':')) + str(message_json.get('counter')) #TODO: Standardise in the protocol
+        
+        base64_signature = message_json.get('signature')
+        signature = DataProcessing.base64_decode(base64_signature)
+        
+        verify_result = DataProcessing.verify_signature(public_key, data_string, signature)
 
+        if (not verify_result):
+            print(f"Warning! Signature could not be verified for message.")
+        
     async def handle_server(self, websocket, message):
         message_json, message_type, message_data = self.read_message(message)
+
+        if (self.message_signed[message_type]):
+            self.verify_message(self.public_key, message_json, message_type, message_data)
+        
         print(f"Recieved message from server of type {message_type}")
 
         # Handle message
@@ -470,6 +478,9 @@ class Server:
     async def handle_client(self, websocket, message):
         message_json, message_type, message_data = self.read_message(message)
 
+        if (self.message_signed[message_type]):
+            self.verify_message(self.public_key, message_json, message_type, message_data)
+        
         # Handle message
         match message_type:
             case MessageType.PUBLIC_CHAT:
