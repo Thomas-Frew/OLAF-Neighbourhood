@@ -88,19 +88,19 @@ class ClientListData : public MessageData {
     auto to_json() const -> nlohmann::json;
 
     explicit ClientListData(
-        std::map<std::string_view, std::vector<std::string_view>> &&online_list)
+        std::map<std::string, std::vector<std::string>> &&online_list)
         : m_online_list(std::move(online_list)) {}
 
     static auto from_json(const nlohmann::json &j)
         -> std::unique_ptr<ClientListData>;
 
     auto users() const noexcept
-        -> const std::map<std::string_view, std::vector<std::string_view>> & {
+        -> const std::map<std::string, std::vector<std::string>> & {
         return this->m_online_list;
     }
 
   private:
-    std::map<std::string_view, std::vector<std::string_view>> m_online_list;
+    std::map<std::string, std::vector<std::string>> m_online_list;
 };
 
 class PrivateChatData : public MessageData {
