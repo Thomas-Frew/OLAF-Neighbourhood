@@ -1,6 +1,7 @@
 #pragma once
 
 #include "client.hpp"
+#include "client_data_handler.hpp"
 #include "connection.hpp"
 #include "data_processing.hpp"
 #include "messages.hpp"
@@ -25,11 +26,12 @@ inline void cli(Connection &&connection, Client &&client,
         connection.write(message.to_json().dump(4));
     }
 
+    ClientDataHandler &client_data_handler = ClientDataHandler::get_instance();
+
     // Request list of online users
     {
-        auto message_data = std::make_unique<ClientListRequestData>();
         Message message{MessageType::CLIENT_LIST_REQUEST,
-                        std::move(message_data)};
+                        std::make_unique<ClientListRequestData>()};
         connection.write(message.to_json().dump(4));
     }
 
@@ -111,13 +113,16 @@ inline void cli(Connection &&connection, Client &&client,
             connection.write(message.to_json().dump(4));
 
         } else {
-            std::cerr << "Unknown command: " << command << "\n";
-            std::cerr << "Known commands are:\n";
-            std::cerr << "\tpublic_chat [message]\tSend a message to everyone"
+            using namespace std::string_view_literals;
+            if (command != "help"sv) {
+                std::cout << "Unknown command: " << command << "\n";
+            }
+            std::cout << "Known commands are:\n";
+            std::cout << "\tpublic_chat [message]\tSend a message to everyone"
                          "in the neighbourhood\n";
-            std::cerr << "\tonline_list\tList the currently online users"
+            std::cout << "\tonline_list\tList the currently online users"
                       << std::endl;
-            std::cerr << "\tchat [N] [user1@hostname1] ... [userN@hostnameN] "
+            std::cout << "\tchat [N] [user1@hostname1] ... [userN@hostnameN] "
                          "[message]\tSend a message to certain users"
                       << std::endl;
         }

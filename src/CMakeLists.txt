@@ -1,4 +1,4 @@
-add_executable(client main.cpp connection.cpp client.cpp messagehandler.cpp messages.cpp)
+add_executable(client main.cpp connection.cpp client.cpp messagehandler.cpp messages.cpp client_data.cpp client_data_handler.cpp)
 set_target_properties(client PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/client")
 
 find_package(Threads REQUIRED)
