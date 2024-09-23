@@ -43,6 +43,12 @@ class DataProcessing():
         )
         return signature
 
+    def create_base64_signature(private_key, message_data, counter):
+        data_string = json.dumps(message_data, separators=(',', ':')) + str(counter)
+        signature = DataProcessing.sign_message(private_key, data_string)
+        base64_signature = DataProcessing.base64_encode(signature)
+        return base64_signature
+
     def sha256(input_string):
         sha256_hash = hashlib.sha256()
         sha256_hash.update(input_string.encode('utf-8'))
@@ -73,6 +79,7 @@ class ServerData:
     def __init__(self, websocket, hostname):
         self.websocket = websocket
         self.hostname = hostname
+        self.id = hostname
 
 
 class ClientData:
@@ -143,13 +150,7 @@ class Server:
         match message_type:
             case MessageType.SERVER_HELLO:
                 message_data = {"hostname": self.hostname}
-                data_string = json.dumps(message_data, separators=(
-                    # TODO: Standardise in the protocol
-                    ',', ':')) + str(self.counter)
-
-                signature = DataProcessing.sign_message(
-                    self.private_key, data_string)
-                base64_signature = DataProcessing.base64_encode(signature)
+                base64_signature = DataProcessing.create_base64_signature(self.private_key, message_data, self.counter)
 
                 return {
                     "type": MessageType.SERVER_HELLO.value,
@@ -171,13 +172,7 @@ class Server:
 
             case MessageType.CLIENT_UPDATE_REQUEST:
                 message_data = {"hostname": self.hostname}
-                data_string = json.dumps(message_data, separators=(
-                    # TODO: Standardise in the protocol
-                    ',', ':')) + str(self.counter)
-
-                signature = DataProcessing.sign_message(
-                    self.private_key, data_string)
-                base64_signature = DataProcessing.base64_encode(signature)
+                base64_signature = DataProcessing.create_base64_signature(self.private_key, message_data, self.counter)
 
                 return {
                     "type": MessageType.CLIENT_UPDATE_REQUEST.value,
@@ -189,13 +184,7 @@ class Server:
             case MessageType.CLIENT_UPDATE:
                 message_data = {"hostname": self.hostname,
                                 "clients": list(self.clients.keys())}
-                data_string = json.dumps(message_data, separators=(
-                    # TODO: Standardise in the protocol
-                    ',', ':')) + str(self.counter)
-
-                signature = DataProcessing.sign_message(
-                    self.private_key, data_string)
-                base64_signature = DataProcessing.base64_encode(signature)
+                base64_signature = DataProcessing.create_base64_signature(self.private_key, message_data, self.counter)
 
                 return {
                     "type": MessageType.CLIENT_UPDATE.value,
@@ -275,9 +264,10 @@ class Server:
                 f"wss://{hostname}/", ssl=auth_context
             )
 
-            self.servers[hostname] = ServerData(websocket, hostname)
+            server_data = ServerData(websocket, hostname)
+            self.servers[hostname] = server_data
+            self.socket_identifier[websocket] = server_data
             self.all_clients[hostname] = []
-            self.socket_identifier[websocket] = hostname
 
             # Connect to the server with a two-way channel
             await websocket.send(
@@ -309,8 +299,7 @@ class Server:
         """ handle the first message sent by a new connection """
         try:
             message = await websocket.recv()
-            message_json, message_type, message_data = self.read_message(
-                message)
+            _, message_type, message_data = self.read_message(message)
 
             match message_type:
                 case MessageType.HELLO:
@@ -318,8 +307,7 @@ class Server:
                 case MessageType.SERVER_HELLO:
                     await self.handle_server_hello(websocket, message_data)
                 case _:
-                    print(f"Unestablished client sent message of type: {
-                          message_type}, closing connection")
+                    print(f"Unestablished client sent message of type: {message_type}, closing connection")
 
         except Exception as e:
             print(f"Unestablished connection closed due to error: {e}")
@@ -327,9 +315,10 @@ class Server:
     async def handle_server_hello(self, websocket, message_data):
         """ Handle SERVER_HELLO messages. """
         hostname = message_data.get('hostname')
-        self.servers[hostname] = ServerData(websocket, hostname)
+        server_data = ServerData(websocket, hostname)
+        self.servers[hostname] = server_data
+        self.socket_identifier[websocket] = server_data
         self.all_clients[hostname] = []
-        self.socket_identifier[websocket] = hostname
 
         # Set up new listener
         new_listener = asyncio.create_task(self.listener(
@@ -349,9 +338,8 @@ class Server:
         # Register client
         public_key = message_data.get('public_key')
         client_data = ClientData(websocket, public_key)
-
         self.clients[client_data.id] = client_data
-        self.socket_identifier[websocket] = client_data.id
+        self.socket_identifier[websocket] = client_data
         self.all_clients[self.hostname].append(client_data.id)
 
         # Set up new listener
@@ -386,7 +374,7 @@ class Server:
 
         finally:
             # Ensure cleanup on disconnect
-            print(f"Disconnecting {self.socket_identifier[websocket]}")
+            print(f"Disconnecting {self.socket_identifier[websocket].id}")
             await disconnect_handler(websocket)
 
     async def handle_client_disconnect(self, websocket):
@@ -413,7 +401,7 @@ class Server:
         """ Handle server disconnection. """
 
         # Find the server by websocket
-        hostname = self.socket_identifier[websocket]
+        hostname = self.socket_identifier[websocket].id
         del self.socket_identifier[websocket]
 
         # Remove the server
