@@ -9,8 +9,9 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 import base64
 import hashlib
-from cryptography.hazmat.primitives import  hashes
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
+
 
 class DataProcessing():
     def verify_signature(public_key, message, signature):
@@ -29,7 +30,7 @@ class DataProcessing():
         except Exception as e:
             print(f"Verify error: {e}")
             return False
-          
+
     def sign_message(private_key, message):
         message = message.encode()
         signature = private_key.sign(
@@ -52,7 +53,7 @@ class DataProcessing():
 
     def base64_decode(input_string):
         return base64.b64decode(input_string)
-    
+
 
 class MessageType(Enum):
     # Client-made messages
@@ -78,7 +79,9 @@ class ClientData:
     def __init__(self, websocket, public_key):
         self.websocket = websocket
         self.public_key = public_key
-        self.id = DataProcessing.base64_encode(DataProcessing.sha256(public_key).encode())
+        self.id = DataProcessing.base64_encode(
+            DataProcessing.sha256(public_key).encode())
+
 
 class Server:
     def __init__(self, host, port):
@@ -101,7 +104,7 @@ class Server:
         self.all_clients[self.hostname] = []
 
         self.counter = 0
-        
+
         # Setup SSL context
         self.ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         self.ssl_context.options |= ssl.OP_NO_SSLv2
@@ -113,32 +116,39 @@ class Server:
         # Load certificate chain
         self.ssl_context.load_cert_chain(
             certfile="server.cert", keyfile="server.key")
-        
+
         # Load private key
         with open("server.key", "rb") as key_file:
-            self.private_key = serialization.load_pem_private_key(key_file.read(), password=None, backend=default_backend())
+            self.private_key = serialization.load_pem_private_key(
+                key_file.read(), password=None, backend=default_backend())
 
         # Load public key
         with open("server.pkey", "rb") as key_file:
-            self.public_key = serialization.load_pem_public_key(key_file.read(), backend=default_backend())
-            
+            self.public_key = serialization.load_pem_public_key(
+                key_file.read(), backend=default_backend())
+
         # Message types where a client's message must be signed
-        self.client_signed = [MessageType.HELLO, MessageType.PUBLIC_CHAT, MessageType.PRIVATE_CHAT]
-        
+        self.client_signed = [MessageType.HELLO,
+                              MessageType.PUBLIC_CHAT, MessageType.PRIVATE_CHAT]
+
         # Messge type where a server's message must be signed
-        self.server_signed = [MessageType.SERVER_HELLO, MessageType.CLIENT_UPDATE_REQUEST, MessageType.CLIENT_UPDATE]
-        
+        self.server_signed = [MessageType.SERVER_HELLO,
+                              MessageType.CLIENT_UPDATE_REQUEST, MessageType.CLIENT_UPDATE]
+
     def create_message(self, message_type):
         self.counter = self.counter + 1
 
         match message_type:
             case MessageType.SERVER_HELLO:
-                message_data = { "hostname": self.hostname }
-                data_string = json.dumps(message_data, separators=(',', ':')) + str(self.counter) #TODO: Standardise in the protocol
-                
-                signature = DataProcessing.sign_message(self.private_key, data_string)
+                message_data = {"hostname": self.hostname}
+                data_string = json.dumps(message_data, separators=(
+                    # TODO: Standardise in the protocol
+                    ',', ':')) + str(self.counter)
+
+                signature = DataProcessing.sign_message(
+                    self.private_key, data_string)
                 base64_signature = DataProcessing.base64_encode(signature)
-                
+
                 return {
                     "type": MessageType.SERVER_HELLO.value,
                     "data": message_data,
@@ -158,12 +168,15 @@ class Server:
                 }
 
             case MessageType.CLIENT_UPDATE_REQUEST:
-                message_data = { "hostname": self.hostname }
-                data_string = json.dumps(message_data, separators=(',', ':')) + str(self.counter) #TODO: Standardise in the protocol
-                
-                signature = DataProcessing.sign_message(self.private_key, data_string)
+                message_data = {"hostname": self.hostname}
+                data_string = json.dumps(message_data, separators=(
+                    # TODO: Standardise in the protocol
+                    ',', ':')) + str(self.counter)
+
+                signature = DataProcessing.sign_message(
+                    self.private_key, data_string)
                 base64_signature = DataProcessing.base64_encode(signature)
-                
+
                 return {
                     "type": MessageType.CLIENT_UPDATE_REQUEST.value,
                     "data": message_data,
@@ -172,12 +185,16 @@ class Server:
                 }
 
             case MessageType.CLIENT_UPDATE:
-                message_data = { "hostname": self.hostname, "clients": list(self.clients.keys()) }
-                data_string = json.dumps(message_data, separators=(',', ':')) + str(self.counter) #TODO: Standardise in the protocol
+                message_data = {"hostname": self.hostname,
+                                "clients": list(self.clients.keys())}
+                data_string = json.dumps(message_data, separators=(
+                    # TODO: Standardise in the protocol
+                    ',', ':')) + str(self.counter)
 
-                signature = DataProcessing.sign_message(self.private_key, data_string)
+                signature = DataProcessing.sign_message(
+                    self.private_key, data_string)
                 base64_signature = DataProcessing.base64_encode(signature)
-                
+
                 return {
                     "type": MessageType.CLIENT_UPDATE.value,
                     "data": message_data,
@@ -279,7 +296,7 @@ class Server:
             print(f"Could not reach server: {hostname} {e}")
 
     def read_message(self, message):
-        # Decode message    
+        # Decode message
         message_json = json.loads(message)
         message_type = MessageType(message_json.get('type'))
         message_data = message_json.get('data')
@@ -290,7 +307,8 @@ class Server:
         """ handle the first message sent by a new connection """
         try:
             message = await websocket.recv()
-            message_json, message_type, message_data = self.read_message(message)
+            message_json, message_type, message_data = self.read_message(
+                message)
 
             match message_type:
                 case MessageType.HELLO:
@@ -298,7 +316,8 @@ class Server:
                 case MessageType.SERVER_HELLO:
                     await self.handle_server_hello(websocket, message_data)
                 case _:
-                    print(f"Unestablished client sent message of type: {message_type}, closing connection")
+                    print(f"Unestablished client sent message of type: {
+                          message_type}, closing connection")
 
         except Exception as e:
             print(f"Unestablished connection closed due to error: {e}")
@@ -328,7 +347,7 @@ class Server:
         # Register client
         public_key = message_data.get('public_key')
         client_data = ClientData(websocket, public_key)
-        
+
         self.clients[client_data.id] = client_data
         self.socket_identifier[websocket] = client_data.id
         self.all_clients[self.hostname].append(client_data.id)
@@ -401,25 +420,28 @@ class Server:
 
         # Log disconnect event
         print(f"Server disconnected with hostname: {hostname}")
-        
+
     def verify_message(self, public_key, message_json, message_data):
-        data_string = json.dumps(message_data, separators=(',', ':')) + str(message_json.get('counter')) #TODO: Standardise in the protocol
-        
+        data_string = json.dumps(message_data, separators=(
+            # TODO: Standardise in the protocol
+            ',', ':')) + str(message_json.get('counter'))
+
         base64_signature = message_json.get('signature')
         signature = DataProcessing.base64_decode(base64_signature)
-    
-        verify_result = DataProcessing.verify_signature(public_key, data_string, signature)
+
+        verify_result = DataProcessing.verify_signature(
+            public_key, data_string, signature)
 
         if (not verify_result):
             print(f"Warning! Signature could not be verified for message.")
-        
+
     async def handle_server(self, websocket, message):
         message_json, message_type, message_data = self.read_message(message)
 
         # Verify signature for servers
         if (message_type in self.server_signed):
             self.verify_message(self.public_key, message_json, message_data)
-            
+
         print(f"Recieved message from server of type {message_type}")
 
         # Handle message
@@ -484,7 +506,7 @@ class Server:
                     )
 
             self.verify_message(client_public_key, message_json, message_data)
-            
+
         # Handle message
         match message_type:
             case MessageType.PUBLIC_CHAT:
