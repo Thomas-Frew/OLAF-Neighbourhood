@@ -38,20 +38,24 @@ auto ClientDataHandler::register_client(std::string public_key) -> void {
 
 auto ClientDataHandler::get_username(std::string_view fingerprint) const
     -> std::string {
+    std::lock_guard guard(this->m_lock);
     return std::string{this->client_of_fingerprint(fingerprint).username()};
 }
 
 auto ClientDataHandler::get_fingerprint(std::string_view username) const
     -> std::string_view {
+    std::lock_guard guard(this->m_lock);
     return this->client_of_username(username).fingerprint();
 }
 
 auto ClientDataHandler::get_pubkey_from_fingerprint(
     std::string_view fingerprint) const -> std::string_view {
+    std::lock_guard guard(this->m_lock);
     return this->client_of_fingerprint(fingerprint).public_key();
 }
 auto ClientDataHandler::get_pubkey_from_username(
     std::string_view username) const -> std::string_view {
+    std::lock_guard guard(this->m_lock);
     return this->client_of_username(username).public_key();
 }
 

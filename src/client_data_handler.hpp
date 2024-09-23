@@ -14,7 +14,7 @@ class ClientDataHandler {
     class ClientData;
 
   public:
-    static auto getInstance() -> ClientDataHandler & {
+    static auto get_instance() -> ClientDataHandler & {
         static ClientDataHandler instance;
         return instance;
     }
@@ -55,11 +55,29 @@ class ClientDataHandler {
      */
     std::unordered_map<std::string_view, std::string_view> m_username_map;
 
+    /**
+     * Get client data from a fingerprint. Assumes we have a lock on the global
+     * mutex.
+     */
     auto client_of_fingerprint(std::string_view fingerprint) -> ClientData &;
+
+    /**
+     * Get client data from a username. Assumes we have a lock on the global
+     * mutex.
+     */
     auto client_of_username(std::string_view username) -> ClientData &;
 
+    /**
+     * Get client data from a fingerprint, in a const context. Assumes we have a
+     * lock on the global mutex.
+     */
     auto client_of_fingerprint(std::string_view fingerprint) const
         -> const ClientData &;
+
+    /**
+     * Get client data from a username, in a const context. Assumes we have a
+     * lock on the global mutex.
+     */
     auto
     client_of_username(std::string_view username) const -> const ClientData &;
 
