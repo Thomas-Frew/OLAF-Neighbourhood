@@ -412,9 +412,7 @@ class Server:
         print(f"Server disconnected with hostname: {hostname}")
 
     def verify_message(self, public_key, message_json, message_data):
-        data_string = json.dumps(message_data, separators=(
-            # TODO: Standardise in the protocol
-            ',', ':')) + str(message_json.get('counter'))
+        data_string = json.dumps(message_data, separators=(',', ':')) + str(message_json.get('counter'))
 
         base64_signature = message_json.get('signature')
         signature = DataProcessing.base64_decode(base64_signature)
