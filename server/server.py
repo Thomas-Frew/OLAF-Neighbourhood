@@ -100,7 +100,7 @@ class Server:
         self.servers = {}  # Server Hostname -> Socket
         self.socket_identifier = {}  # WebSocket -> Identifier
 
-        self.all_clients = {}  # Server hostname -> User id List
+        self.all_clients = {}  # Server Hostname -> User ID List
         self.all_clients[self.hostname] = []
 
         self.counter = 0
@@ -129,11 +129,13 @@ class Server:
 
         # Message types where a client's message must be signed
         self.client_signed = [MessageType.HELLO,
-                              MessageType.PUBLIC_CHAT, MessageType.PRIVATE_CHAT]
+                              MessageType.PUBLIC_CHAT,
+                              MessageType.PRIVATE_CHAT]
 
         # Messge type where a server's message must be signed
         self.server_signed = [MessageType.SERVER_HELLO,
-                              MessageType.CLIENT_UPDATE_REQUEST, MessageType.CLIENT_UPDATE]
+                              MessageType.CLIENT_UPDATE_REQUEST,
+                              MessageType.CLIENT_UPDATE]
 
     def create_message(self, message_type):
         self.counter = self.counter + 1
@@ -342,7 +344,7 @@ class Server:
         """ Handle HELLO messages. """
 
         # TODO: Verify no duplicate HELLO messages
-        # A`ls`o, cannot send other messages prior to HELLO
+        # Also, cannot send other messages prior to HELLO
 
         # Register client
         public_key = message_data.get('public_key')
@@ -433,7 +435,7 @@ class Server:
             public_key, data_string, signature)
 
         if (not verify_result):
-            print(f"Warning! Signature could not be verified for message.")
+            print("Warning! Signature could not be verified for message.")
 
     async def handle_server(self, websocket, message):
         message_json, message_type, message_data = self.read_message(message)
