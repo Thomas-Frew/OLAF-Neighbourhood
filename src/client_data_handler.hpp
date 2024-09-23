@@ -1,40 +1,30 @@
 #pragma once
 #include "client_data.hpp"
-#include <expected>
-#include <memory>
 #include <string_view>
 #include <unordered_map>
 
 class ClientDataHandler {
   public:
-    enum class ErrorCode {
-        NoSuchUser,
-    };
-
-    static auto get_instance() -> ClientDataHandler & {
+    static auto getInstance() -> ClientDataHandler & {
         static ClientDataHandler instance;
         return instance;
     }
 
     auto client_of_fingerprint(std::string_view fingerprint) const
-        -> std::expected<std::shared_ptr<const ClientData>,
-                         ClientDataHandler::ErrorCode>;
+        -> const ClientData &;
 
-    auto client_of_username(std::string_view username) const
-        -> std::expected<std::shared_ptr<const ClientData>,
-                         ClientDataHandler::ErrorCode>;
+    auto
+    client_of_username(std::string_view username) const -> const ClientData &;
 
     auto update_client_username(std::string_view old_name,
-                                std::string_view new_name)
-        -> std::expected<void, ErrorCode>;
+                                std::string_view new_name) -> void;
 
   private:
-    ClientDataHandler() = default;
+    ClientDataHandler();
     /**
      * Maps fingerprints to client data
      */
-    std::unordered_map<std::string_view, std::shared_ptr<ClientData>>
-        m_registered_users;
+    std::unordered_map<std::string_view, ClientData> m_registered_users;
 
     /**
      * Maps usernames to fingerprints
