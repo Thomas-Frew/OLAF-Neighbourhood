@@ -36,6 +36,25 @@ auto ClientDataHandler::register_client(std::string public_key) -> void {
     err_check(insert_check_2);
 }
 
+auto ClientDataHandler::get_username(std::string_view fingerprint) const
+    -> std::string {
+    return std::string{this->client_of_fingerprint(fingerprint).username()};
+}
+
+auto ClientDataHandler::get_fingerprint(std::string_view username) const
+    -> std::string_view {
+    return this->client_of_username(username).fingerprint();
+}
+
+auto ClientDataHandler::get_pubkey_from_fingerprint(
+    std::string_view fingerprint) const -> std::string_view {
+    return this->client_of_fingerprint(fingerprint).public_key();
+}
+auto ClientDataHandler::get_pubkey_from_username(
+    std::string_view username) const -> std::string_view {
+    return this->client_of_username(username).public_key();
+}
+
 auto ClientDataHandler::client_of_username(std::string_view username)
     -> ClientData & {
 
@@ -47,8 +66,30 @@ auto ClientDataHandler::client_of_username(std::string_view username)
     return client_of_fingerprint(it->second);
 }
 
+auto ClientDataHandler::client_of_username(std::string_view username) const
+    -> const ClientData & {
+
+    auto it = this->m_username_map.find(username);
+    if (it == this->m_username_map.end()) {
+        throw "No known user";
+    }
+
+    return client_of_fingerprint(it->second);
+}
+
 auto ClientDataHandler::client_of_fingerprint(std::string_view fingerprint)
     -> ClientData & {
+
+    auto it = this->m_registered_users.find(fingerprint);
+    if (it == this->m_registered_users.end()) {
+        throw "No known user";
+    }
+
+    return it->second;
+}
+
+auto ClientDataHandler::client_of_fingerprint(
+    std::string_view fingerprint) const -> const ClientData & {
 
     auto it = this->m_registered_users.find(fingerprint);
     if (it == this->m_registered_users.end()) {

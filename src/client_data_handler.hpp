@@ -24,6 +24,19 @@ class ClientDataHandler {
 
     auto register_client(std::string public_key) -> void;
 
+    // NOTE: returns a `std::string` as usernames are mutable.
+    // The output thread may try to read off a `std::string_view` whilst
+    // the input thread updates the username, freeing the underlying data,
+    // causing undefined behaviour + potential security vulnerabilities.
+    auto get_username(std::string_view fingerprint) const -> std::string;
+
+    auto get_fingerprint(std::string_view username) const -> std::string_view;
+
+    auto get_pubkey_from_fingerprint(std::string_view fingerprint) const
+        -> std::string_view;
+    auto get_pubkey_from_username(std::string_view username) const
+        -> std::string_view;
+
   private:
     ClientDataHandler();
 
@@ -43,8 +56,12 @@ class ClientDataHandler {
     std::unordered_map<std::string_view, std::string_view> m_username_map;
 
     auto client_of_fingerprint(std::string_view fingerprint) -> ClientData &;
-
     auto client_of_username(std::string_view username) -> ClientData &;
+
+    auto client_of_fingerprint(std::string_view fingerprint) const
+        -> const ClientData &;
+    auto
+    client_of_username(std::string_view username) const -> const ClientData &;
 
     class ClientData {
       public:
