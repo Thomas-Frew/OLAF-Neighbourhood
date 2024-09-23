@@ -1,5 +1,6 @@
 #pragma once
 
+#include "data_processing.hpp"
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <string>
@@ -41,8 +42,8 @@ class HelloData : public MessageData {
     explicit HelloData(std::string_view public_key)
         : m_public_key(public_key) {}
 
-    static auto from_json(const nlohmann::json &j)
-        -> std::unique_ptr<HelloData>;
+    static auto
+    from_json(const nlohmann::json &j) -> std::unique_ptr<HelloData>;
 
   private:
     std::string m_public_key;
@@ -57,8 +58,8 @@ class PublicChatData : public MessageData {
                             std::string_view message)
         : m_public_key(public_key), m_message(message) {}
 
-    static auto from_json(const nlohmann::json &j)
-        -> std::unique_ptr<PublicChatData>;
+    static auto
+    from_json(const nlohmann::json &j) -> std::unique_ptr<PublicChatData>;
 
     inline auto message() const noexcept -> std::string_view {
         return this->m_message;
@@ -91,8 +92,8 @@ class ClientListData : public MessageData {
         std::map<std::string, std::vector<std::string>> &&online_list)
         : m_online_list(std::move(online_list)) {}
 
-    static auto from_json(const nlohmann::json &j)
-        -> std::unique_ptr<ClientListData>;
+    static auto
+    from_json(const nlohmann::json &j) -> std::unique_ptr<ClientListData>;
 
     auto users() const noexcept
         -> const std::map<std::string, std::vector<std::string>> & {
@@ -117,8 +118,8 @@ class PrivateChatData : public MessageData {
           m_symm_keys(std::move(symm_keys)),
           m_participants(std::move(participants)), m_message(message) {}
 
-    static auto from_json(const nlohmann::json &j)
-        -> std::unique_ptr<PrivateChatData>;
+    static auto
+    from_json(const nlohmann::json &j) -> std::unique_ptr<PrivateChatData>;
 
     inline auto message() const noexcept -> std::string_view {
         return this->m_message;
@@ -146,12 +147,19 @@ class Message {
     inline auto data() const -> const MessageData & { return *m_data; }
 
     explicit Message(MessageType type, std::unique_ptr<MessageData> &&data,
-                     std::string_view signature, uint32_t counter)
-        : m_type(type), m_data(std::move(data)), m_signature(signature),
-          m_counter(counter) {}
+                     std::string private_key, uint32_t counter) {
+        m_type = type;
+
+        auto data_string = data->to_json().dump() + std::to_string(counter);
+        auto signature = sign_message(private_key, data_string);
+        m_signature = signature;
+
+        m_data = std::move(data);
+        m_counter = counter;
+    }
 
     explicit Message(MessageType type, std::unique_ptr<MessageData> &&data)
-        : Message(type, std::move(data), "No Signature", 0) {}
+        : m_type(type), m_data(std::move(data)) {}
 
   private:
     MessageType m_type;
