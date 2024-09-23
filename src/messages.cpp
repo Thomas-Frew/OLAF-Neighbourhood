@@ -108,11 +108,11 @@ auto ClientListData::to_json() const -> nlohmann::json {
 
 auto ClientListData::from_json(const nlohmann::json &j)
     -> std::unique_ptr<ClientListData> {
-    std::map<std::string_view, std::vector<std::string_view>> online_users;
+    std::map<std::string, std::vector<std::string>> online_users;
     for (const auto &server : j.at("servers")) {
         online_users.emplace(
-            server.at("address").get<std::string_view>(),
-            server.at("clients").get<std::vector<std::string_view>>());
+            server.at("address").get<std::string>(),
+            server.at("clients").get<std::vector<std::string>>());
     }
     return std::make_unique<ClientListData>(std::move(online_users));
 }
@@ -148,8 +148,8 @@ auto Message::to_json() const -> nlohmann::json {
     if (is_signed(this->type())) {
         return nlohmann::json{{"type", message_type_to_string(this->type())},
                               {"data", this->m_data->to_json()},
-                              {"signature", "temporary_signature"},
-                              {"counter", 0}};
+                              {"signature", this->m_signature},
+                              {"counter", this->m_counter}};
     } else {
         return this->m_data->to_json();
     }

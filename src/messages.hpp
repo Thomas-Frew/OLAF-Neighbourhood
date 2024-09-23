@@ -88,19 +88,19 @@ class ClientListData : public MessageData {
     auto to_json() const -> nlohmann::json;
 
     explicit ClientListData(
-        std::map<std::string_view, std::vector<std::string_view>> &&online_list)
+        std::map<std::string, std::vector<std::string>> &&online_list)
         : m_online_list(std::move(online_list)) {}
 
     static auto from_json(const nlohmann::json &j)
         -> std::unique_ptr<ClientListData>;
 
     auto users() const noexcept
-        -> const std::map<std::string_view, std::vector<std::string_view>> & {
+        -> const std::map<std::string, std::vector<std::string>> & {
         return this->m_online_list;
     }
 
   private:
-    std::map<std::string_view, std::vector<std::string_view>> m_online_list;
+    std::map<std::string, std::vector<std::string>> m_online_list;
 };
 
 class PrivateChatData : public MessageData {
@@ -145,10 +145,17 @@ class Message {
     inline auto type() const -> MessageType { return m_type; }
     inline auto data() const -> const MessageData & { return *m_data; }
 
+    explicit Message(MessageType type, std::unique_ptr<MessageData> &&data,
+                     std::string_view signature, uint32_t counter)
+        : m_type(type), m_data(std::move(data)), m_signature(signature),
+          m_counter(counter) {}
+
     explicit Message(MessageType type, std::unique_ptr<MessageData> &&data)
         : m_type(type), m_data(std::move(data)) {}
 
   private:
     MessageType m_type;
     std::unique_ptr<MessageData> m_data;
+    std::string_view m_signature;
+    uint32_t m_counter;
 };

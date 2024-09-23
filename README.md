@@ -8,7 +8,15 @@ An implementation of the OLAF's Neighbourhood protocol.
 In the `client` directory, the following is required:
 
 - `server.cert`: The certificate of the server the client is connecting to.
+- `client.key`: The private key of the client. 
+- `client.pkey`: The public key of the client. 
 
+You can generate the client keys with the following commands:
+
+```bash
+openssl genrsa -out ./client/client.key 2048
+openssl rsa -in .client/client.key -pubout -out ./client/client.pkey
+```
 
 ### Building the Client
 The Client is written in C++, with all dependencies managed by CMake. To build the client, write the following commands in the project root:
@@ -22,10 +30,9 @@ The client will be built as `/client/client`.
 
 ### Running the Client
 
-The client is run within the `client` directory as `./client [port]? [pub_key]?`
+The client is run within the `client` directory as `./client [port]?
 
 - `[ip]`: An optional argument containing the port of the server. Defaults to 1443.
-- `[pub_key]`: An optional argument containing the public key of the client. Defaults to 'default'.
 
 ### Initialisation Behaviour
 
@@ -46,7 +53,7 @@ The client CLI supports the following commands:
 ## Server
 
 ### Server Setup
-The server requires a 2048-bit RSA private key, and a certificate. These are stored in `python-server/server.key` and `python-server/server.cert` respectively.
+The server requires a 2048-bit RSA private key, public key, and a certificate. These are stored in `python-server/server.key`, `python-server/server.pkey` and `python-server/server.cert` respectively.
 
 You can generate them with the following commands:
 ```bash
@@ -54,6 +61,7 @@ mkdir ssl
 openssl genrsa -out python-server/server.key 2048
 openssl req -new -key python-server/server.key -out python-server/server.csr
 openssl x509 -req -days 30 -in python-server/server.csr -signkey python-server/server.key -out python-server/server.cert
+openssl rsa -in python-server/server.key -pubout -out python-server/server.pkey
 ```
 
 The server also required a file containing all hostnames of servers in their neighbourhood (in the form `host:port`). These are stored in `python-server/neighbourhood.olaf` as plaintext.
