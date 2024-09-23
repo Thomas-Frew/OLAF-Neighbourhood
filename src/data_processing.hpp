@@ -21,18 +21,23 @@ inline std::string base64_encode(const std::string &input) {
     BIO *bio, *b64;
     BUF_MEM *buffer_ptr;
 
+    // Create BIO filters for base64 encoding and memory buffer
     b64 = BIO_new(BIO_f_base64());
     bio = BIO_new(BIO_s_mem());
     bio = BIO_push(b64, bio);
 
+    // Disable newline when encoding base64 (no line breaks in the output)
     BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
 
+    // Write the input data to the BIO and flush it to complete encoding
     BIO_write(bio, input.c_str(), input.size());
     BIO_flush(bio);
 
+    // Retrieve the encoded data from the BIO memory
     BIO_get_mem_ptr(bio, &buffer_ptr);
     BIO_set_close(bio, BIO_NOCLOSE);
 
+    // Create a string from the buffer pointer
     std::string encoded_data(buffer_ptr->data, buffer_ptr->length);
     BIO_free_all(bio);
 
@@ -50,6 +55,7 @@ inline bool verify_signature(const std::string &public_key_pem,
         return false;
     }
 
+    // Read the public key from the BIO (PEM format)
     public_key = PEM_read_bio_PUBKEY(bio, nullptr, nullptr, nullptr);
     BIO_free(bio);
     if (public_key == nullptr) {
@@ -57,6 +63,7 @@ inline bool verify_signature(const std::string &public_key_pem,
         return false;
     }
 
+    // Create a new message digest context
     EVP_MD_CTX *mdctx = EVP_MD_CTX_new();
     if (mdctx == nullptr) {
         handle_openssl_error();
@@ -64,6 +71,7 @@ inline bool verify_signature(const std::string &public_key_pem,
         return false;
     }
 
+    // Initialize verification operation
     if (1 != EVP_DigestVerifyInit(mdctx, nullptr, md, nullptr, public_key)) {
         handle_openssl_error();
         EVP_MD_CTX_free(mdctx);
@@ -71,6 +79,7 @@ inline bool verify_signature(const std::string &public_key_pem,
         return false;
     }
 
+    // Update the context with the message data
     if (1 != EVP_DigestVerifyUpdate(mdctx, message.data(), message.size())) {
         handle_openssl_error();
         EVP_MD_CTX_free(mdctx);
@@ -78,6 +87,7 @@ inline bool verify_signature(const std::string &public_key_pem,
         return false;
     }
 
+    // Finalize the verification and compare the signature
     bool result =
         EVP_DigestVerifyFinal(
             mdctx, reinterpret_cast<const unsigned char *>(signature.data()),
@@ -93,12 +103,15 @@ inline std::string sign_message(const std::string &private_key_pem,
                                 const std::string &message) {
     const EVP_MD *md = EVP_sha256();
     EVP_PKEY *private_key = nullptr;
+
+    // Create BIO for private key PEM
     BIO *bio = BIO_new_mem_buf(private_key_pem.data(), -1);
     if (bio == nullptr) {
         handle_openssl_error();
         return "";
     }
 
+    // Read the private key from the BIO
     private_key = PEM_read_bio_PrivateKey(bio, nullptr, nullptr, nullptr);
     BIO_free(bio);
     if (private_key == nullptr) {
@@ -106,6 +119,7 @@ inline std::string sign_message(const std::string &private_key_pem,
         return "";
     }
 
+    // Create a new message digest context for signing
     EVP_MD_CTX *mdctx = EVP_MD_CTX_new();
     if (mdctx == nullptr) {
         handle_openssl_error();
@@ -130,6 +144,7 @@ inline std::string sign_message(const std::string &private_key_pem,
         return "";
     }
 
+    // Set the salt length to 32 bytes
     if (1 != EVP_PKEY_CTX_set_rsa_pss_saltlen(EVP_MD_CTX_pkey_ctx(mdctx), 32)) {
         handle_openssl_error();
         EVP_MD_CTX_free(mdctx);
@@ -137,6 +152,7 @@ inline std::string sign_message(const std::string &private_key_pem,
         return "";
     }
 
+    // Hash the message data
     if (1 != EVP_DigestSignUpdate(mdctx, message.data(), message.size())) {
         handle_openssl_error();
         EVP_MD_CTX_free(mdctx);
@@ -144,6 +160,7 @@ inline std::string sign_message(const std::string &private_key_pem,
         return "";
     }
 
+    // Determine the signature size
     size_t sig_len = 0;
     if (1 != EVP_DigestSignFinal(mdctx, nullptr, &sig_len)) {
         handle_openssl_error();
@@ -152,6 +169,7 @@ inline std::string sign_message(const std::string &private_key_pem,
         return "";
     }
 
+    // Allocate memory for the signature and finalize signing
     std::string signature(sig_len, '\0');
     if (1 != EVP_DigestSignFinal(
                  mdctx, reinterpret_cast<unsigned char *>(&signature[0]),
@@ -164,6 +182,7 @@ inline std::string sign_message(const std::string &private_key_pem,
 
     signature.resize(sig_len);
 
+    // Free the context and private key
     EVP_MD_CTX_free(mdctx);
     EVP_PKEY_free(private_key);
 
@@ -173,10 +192,13 @@ inline std::string sign_message(const std::string &private_key_pem,
 inline std::string sha256(const std::string &input) {
     unsigned char hash[SHA256_DIGEST_LENGTH];
     SHA256_CTX sha256;
+
+    // Initialize, update, and finalize the SHA-256 hash computation
     SHA256_Init(&sha256);
     SHA256_Update(&sha256, input.c_str(), input.size());
     SHA256_Final(hash, &sha256);
 
+    // Convert the hash to a hex string
     std::stringstream input_stream;
     for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
         input_stream << std::hex << std::setw(2) << std::setfill('0')
