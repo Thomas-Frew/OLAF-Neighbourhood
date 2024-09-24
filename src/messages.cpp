@@ -82,14 +82,14 @@ auto HelloData::from_json(const nlohmann::json &j)
 
 auto PublicChatData::to_json() const -> nlohmann::json {
     return nlohmann::json{{"type", message_type_to_string(this->type())},
-                          {"public_key", this->m_public_key},
+                          {"sender", this->m_sender},
                           {"message", this->m_message}};
 }
 
 auto PublicChatData::from_json(const nlohmann::json &j)
     -> std::unique_ptr<PublicChatData> {
     return std::make_unique<PublicChatData>(
-        j.at("public_key").get<decltype(PublicChatData::m_public_key)>(),
+        j.at("sender").get<decltype(PublicChatData::m_sender)>(),
         j.at("message").get<decltype(PublicChatData::m_message)>());
 }
 

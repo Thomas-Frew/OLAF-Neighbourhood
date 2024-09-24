@@ -28,6 +28,17 @@ inline void cli(Connection &&connection, Client &&client,
 
     ClientDataHandler &client_data_handler = ClientDataHandler::get_instance();
 
+    // Register self
+    {
+        auto default_username =
+            client_data_handler.register_client(client.getPublicKey());
+
+        std::cout << "Registered self as: " << default_username << std::endl;
+
+        using namespace std::literals;
+        client_data_handler.update_client_username(default_username, "self"s);
+    }
+
     // Request list of online users
     {
         Message message{MessageType::CLIENT_LIST_REQUEST,

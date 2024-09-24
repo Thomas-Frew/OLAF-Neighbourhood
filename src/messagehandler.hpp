@@ -1,12 +1,15 @@
 #pragma once
 
+#include "client_data_handler.hpp"
 #include "messages.hpp"
 #include <string_view>
 #include <vector>
 
 class MessageHandler {
   public:
-    MessageHandler() : m_save_messages(true) {}
+    MessageHandler()
+        : m_save_messages(true),
+          m_client_data_handler(ClientDataHandler::get_instance()) {}
     auto handle_message(std::string_view message) noexcept -> void;
 
   private:
@@ -21,4 +24,5 @@ class MessageHandler {
 
     std::vector<Message> m_unhandled_messages;
     bool m_save_messages;
+    ClientDataHandler &m_client_data_handler;
 };

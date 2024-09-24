@@ -38,8 +38,8 @@ class HelloData : public MessageData {
     constexpr auto type() const -> MessageType;
     auto to_json() const -> nlohmann::json;
 
-    explicit HelloData(std::string_view public_key)
-        : m_public_key(public_key) {}
+    explicit HelloData(std::string public_key)
+        : m_public_key(std::move(public_key)) {}
 
     static auto
     from_json(const nlohmann::json &j) -> std::unique_ptr<HelloData>;
@@ -53,9 +53,8 @@ class PublicChatData : public MessageData {
     constexpr auto type() const -> MessageType;
     auto to_json() const -> nlohmann::json;
 
-    explicit PublicChatData(std::string_view public_key,
-                            std::string_view message)
-        : m_public_key(public_key), m_message(message) {}
+    explicit PublicChatData(std::string fingerprint, std::string message)
+        : m_sender(std::move(fingerprint)), m_message(std::move(message)) {}
 
     static auto
     from_json(const nlohmann::json &j) -> std::unique_ptr<PublicChatData>;
@@ -64,12 +63,12 @@ class PublicChatData : public MessageData {
         return this->m_message;
     };
 
-    inline auto public_key() const noexcept -> std::string_view {
-        return this->m_public_key;
+    inline auto sender() const noexcept -> std::string_view {
+        return this->m_sender;
     };
 
   private:
-    std::string m_public_key;
+    std::string m_sender;
     std::string m_message;
 };
 

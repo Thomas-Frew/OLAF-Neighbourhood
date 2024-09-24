@@ -44,7 +44,8 @@ class DataProcessing():
         return signature
 
     def create_base64_signature(private_key, message_data, counter):
-        data_string = json.dumps(message_data, separators=(',', ':')) + str(counter)
+        data_string = json.dumps(
+            message_data, separators=(',', ':')) + str(counter)
         signature = DataProcessing.sign_message(private_key, data_string)
         base64_signature = DataProcessing.base64_encode(signature)
         return base64_signature
@@ -103,8 +104,8 @@ class Server:
         self.port = port
         self.hostname = f"{host}:{port}"
 
-        self.clients = {}  # Client Public Key -> Socket
-        self.servers = {}  # Server Hostname -> Socket
+        self.clients = {}  # Client Fingerprint -> Client Data
+        self.servers = {}  # Server Hostname -> Server Data
         self.socket_identifier = {}  # WebSocket -> Identifier
 
         self.all_clients = {}  # Server Hostname -> User ID List
@@ -150,7 +151,8 @@ class Server:
         match message_type:
             case MessageType.SERVER_HELLO:
                 message_data = {"hostname": self.hostname}
-                base64_signature = DataProcessing.create_base64_signature(self.private_key, message_data, self.counter)
+                base64_signature = DataProcessing.create_base64_signature(
+                    self.private_key, message_data, self.counter)
 
                 return {
                     "type": MessageType.SERVER_HELLO.value,
@@ -165,14 +167,17 @@ class Server:
                     "servers": [
                         {
                             "address": address,
-                            "clients": client_list,
+                            "clients": [
+                                self.clients[client].public_key for client in client_list
+                            ],
                         } for address, client_list in self.all_clients.items()
                     ]
                 }
 
             case MessageType.CLIENT_UPDATE_REQUEST:
                 message_data = {"hostname": self.hostname}
-                base64_signature = DataProcessing.create_base64_signature(self.private_key, message_data, self.counter)
+                base64_signature = DataProcessing.create_base64_signature(
+                    self.private_key, message_data, self.counter)
 
                 return {
                     "type": MessageType.CLIENT_UPDATE_REQUEST.value,
@@ -184,7 +189,8 @@ class Server:
             case MessageType.CLIENT_UPDATE:
                 message_data = {"hostname": self.hostname,
                                 "clients": list(self.clients.keys())}
-                base64_signature = DataProcessing.create_base64_signature(self.private_key, message_data, self.counter)
+                base64_signature = DataProcessing.create_base64_signature(
+                    self.private_key, message_data, self.counter)
 
                 return {
                     "type": MessageType.CLIENT_UPDATE.value,
@@ -307,7 +313,8 @@ class Server:
                 case MessageType.SERVER_HELLO:
                     await self.handle_server_hello(websocket, message_data)
                 case _:
-                    print(f"Unestablished client sent message of type: {message_type}, closing connection")
+                    print(f"Unestablished client sent message of type: {
+                          message_type}, closing connection")
 
         except Exception as e:
             print(f"Unestablished connection closed due to error: {e}")
@@ -412,7 +419,8 @@ class Server:
         print(f"Server disconnected with hostname: {hostname}")
 
     def verify_message(self, public_key, message_json, message_data):
-        data_string = json.dumps(message_data, separators=(',', ':')) + str(message_json.get('counter'))
+        data_string = json.dumps(message_data, separators=(
+            ',', ':')) + str(message_json.get('counter'))
 
         base64_signature = message_json.get('signature')
         signature = DataProcessing.base64_decode(base64_signature)

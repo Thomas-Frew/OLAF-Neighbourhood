@@ -69,8 +69,10 @@ auto MessageHandler::handle_public_chat(Message &&message) -> void {
 
     const auto &data = static_cast<const PublicChatData &>(message.data());
 
-    std::cout << "[PUBLIC_CHAT] " << data.public_key() << ": " << data.message()
-              << std::endl;
+    std::cout << "[PUBLIC_CHAT] "
+              << this->m_client_data_handler.get_username(
+                     std::string{data.sender()})
+              << ": " << data.message() << std::endl;
 }
 
 auto MessageHandler::handle_private_chat(Message &&message) -> void {
@@ -89,30 +91,33 @@ auto MessageHandler::handle_private_chat(Message &&message) -> void {
 
     const auto &data = static_cast<const PrivateChatData &>(message.data());
 
-    std::cout << "[PRIVATE_CHAT] " << data.participants().at(0) << ": "
-              << data.message() << std::endl;
+    std::cout << "[PRIVATE_CHAT] "
+              << this->m_client_data_handler.get_username(
+                     data.participants().at(0))
+              << ": " << data.message() << std::endl;
 }
 
 auto MessageHandler::handle_client_list(Message &&message) -> void {
-    switch (this->verify_message(message)) {
-    case VerificationStatus::Verified:
-        break;
-    case VerificationStatus::InvalidSignature:
-        return;
-    case VerificationStatus::UnknownUser:
-        if (this->m_save_messages) {
-            std::cout << "[SYSTEM] Outdated client list!" << std::endl;
-            this->m_unhandled_messages.push_back(std::move(message));
-        }
-        break;
-    }
-
     const auto &data = static_cast<const ClientListData &>(message.data());
 
+    // Register users
+    for (const auto &[server, client_list] : data.users()) {
+        for (const auto &client : client_list) {
+            if (!this->m_client_data_handler.is_registered(sha256(client))) {
+                // auto{client} ensures we make a copy, not needed but cool :3
+                this->m_client_data_handler.register_client(auto{client});
+            }
+        }
+    }
+
+    // Display to client
     std::cout << "[ONLINE USERS]";
     for (const auto &[server, client_list] : data.users()) {
-        for (auto client : client_list) {
-            std::cout << '\n' << client << '@' << server;
+        for (const auto &client : client_list) {
+            std::cout << '\n'
+                      << this->m_client_data_handler.get_username(
+                             sha256(client))
+                      << '@' << server;
         }
     }
     std::cout << std::endl;
