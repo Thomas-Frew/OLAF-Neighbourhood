@@ -3,39 +3,68 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <utility>
+#include <vector>
 
-auto MessageHandler::handle_message(std::string_view raw_message) const noexcept
+auto MessageHandler::handle_message(std::string_view raw_message) noexcept
     -> void {
     // std::cerr << "[MESSAGE RECEIVED] " << raw_message << std::endl; // DEBUG
     try {
-        auto message = Message::from_json(nlohmann::json::parse(raw_message));
+        this->handle_message(
+            Message::from_json(nlohmann::json::parse(raw_message)));
 
-        switch (message.type()) {
-        case MessageType::PUBLIC_CHAT: {
-            this->handle_public_chat(std::move(message));
-        }; break;
-        case MessageType::PRIVATE_CHAT: {
-            this->handle_private_chat(std::move(message));
-        }; break;
-        case MessageType::CLIENT_LIST: {
-            this->handle_client_list(std::move(message));
-        }; break;
-        case MessageType::HELLO:
-            [[fallthrough]];
-        case MessageType::CLIENT_LIST_REQUEST:
-            [[fallthrough]];
-        default:
-            break;
-        }
     } catch (std::exception e) {
         // ignore invalid messages...
         std::cerr << "Unknown error: " << e.what() << std::endl;
     }
 }
 
-auto MessageHandler::handle_public_chat(Message &&message) const -> void {
-    if (!this->verify_message(message)) {
+auto MessageHandler::handle_message(Message &&message) -> void {
+    switch (message.type()) {
+    case MessageType::PUBLIC_CHAT: {
+        this->handle_public_chat(std::move(message));
+    }; break;
+    case MessageType::PRIVATE_CHAT: {
+        this->handle_private_chat(std::move(message));
+    }; break;
+    case MessageType::CLIENT_LIST: {
+        this->handle_client_list(std::move(message));
+
+        // handle any queued messages...
+        this->m_save_messages = false;
+        std::ranges::for_each(this->m_unhandled_messages,
+                              [this](auto &&msg) -> void {
+                                  this->handle_message(std::move(msg));
+                              });
+        this->m_unhandled_messages.clear();
+        this->m_save_messages = true;
+    }; break;
+    case MessageType::HELLO:
+        [[fallthrough]];
+    case MessageType::CLIENT_LIST_REQUEST:
+        [[fallthrough]];
+    default:
+        break;
+    }
+}
+
+enum class MessageHandler::VerificationStatus {
+    Verified,
+    UnknownUser,
+    InvalidSignature,
+};
+
+auto MessageHandler::handle_public_chat(Message &&message) -> void {
+    switch (this->verify_message(message)) {
+    case VerificationStatus::Verified:
+        break;
+    case VerificationStatus::InvalidSignature:
         return;
+    case VerificationStatus::UnknownUser:
+        if (this->m_save_messages) {
+            std::cout << "[SYSTEM] Outdated client list!" << std::endl;
+            this->m_unhandled_messages.push_back(std::move(message));
+        }
+        break;
     }
 
     const auto &data = static_cast<const PublicChatData &>(message.data());
@@ -44,9 +73,18 @@ auto MessageHandler::handle_public_chat(Message &&message) const -> void {
               << std::endl;
 }
 
-auto MessageHandler::handle_private_chat(Message &&message) const -> void {
-    if (!this->verify_message(message)) {
+auto MessageHandler::handle_private_chat(Message &&message) -> void {
+    switch (this->verify_message(message)) {
+    case VerificationStatus::Verified:
+        break;
+    case VerificationStatus::InvalidSignature:
         return;
+    case VerificationStatus::UnknownUser:
+        if (this->m_save_messages) {
+            std::cout << "[SYSTEM] Outdated client list!" << std::endl;
+            this->m_unhandled_messages.push_back(std::move(message));
+        }
+        break;
     }
 
     const auto &data = static_cast<const PrivateChatData &>(message.data());
@@ -55,9 +93,18 @@ auto MessageHandler::handle_private_chat(Message &&message) const -> void {
               << data.message() << std::endl;
 }
 
-auto MessageHandler::handle_client_list(Message &&message) const -> void {
-    if (!this->verify_message(message)) {
+auto MessageHandler::handle_client_list(Message &&message) -> void {
+    switch (this->verify_message(message)) {
+    case VerificationStatus::Verified:
+        break;
+    case VerificationStatus::InvalidSignature:
         return;
+    case VerificationStatus::UnknownUser:
+        if (this->m_save_messages) {
+            std::cout << "[SYSTEM] Outdated client list!" << std::endl;
+            this->m_unhandled_messages.push_back(std::move(message));
+        }
+        break;
     }
 
     const auto &data = static_cast<const ClientListData &>(message.data());
@@ -71,7 +118,8 @@ auto MessageHandler::handle_client_list(Message &&message) const -> void {
     std::cout << std::endl;
 }
 
-auto MessageHandler::verify_message(const Message &message) const -> bool {
+auto MessageHandler::verify_message(const Message &message) const
+    -> VerificationStatus {
     // TODO: Verify messages
-    return true;
+    return VerificationStatus::Verified;
 }
