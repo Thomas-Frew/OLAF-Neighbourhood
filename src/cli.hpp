@@ -137,7 +137,8 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
             std::stringstream text_stream(text);
             text_stream >> filename;
 
-            web_connection.write_file(filename);
+            std::string response = web_connection.write_file(filename);
+            std::cout << response << '\n';
 
         } else if (command == "download") {
 
