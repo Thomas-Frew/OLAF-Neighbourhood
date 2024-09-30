@@ -11,10 +11,6 @@ import base64
 import hashlib
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
-import os
-import uuid
-from time import time
-from aiohttp import web
 
 
 class DataProcessing():
@@ -82,7 +78,7 @@ class MessageType(Enum):
 class ServerData:
     def __init__(self, websocket, hostname):
         self.websocket = websocket
-        self.websocket_hostname = hostname
+        self.hostname = hostname
         self.id = hostname
 
 
@@ -95,7 +91,7 @@ class ClientData:
 
 
 class Server:
-    def __init__(self, host, websocket_port, file_server_port):
+    def __init__(self, host, port):
         # Suppress specific deprecation warnings for SSL options
         warnings.filterwarnings("ignore", category=DeprecationWarning,
                                 message="ssl.OP_NO_TLS*")
@@ -104,17 +100,15 @@ class Server:
 
         # Server details
         self.host = host
-        self.websocket_port = websocket_port
-        self.websocket_hostname = f"{host}:{websocket_port}"
-        self.file_server_port = file_server_port
-        self.file_server_hostname = f"{host}:{file_server_port}"
+        self.port = port
+        self.hostname = f"{host}:{port}"
 
         self.clients = {}  # Client Public Key -> Socket
         self.servers = {}  # Server Hostname -> Socket
         self.socket_identifier = {}  # WebSocket -> Identifier
 
         self.all_clients = {}  # Server Hostname -> User ID List
-        self.all_clients[self.websocket_hostname] = []
+        self.all_clients[self.hostname] = []
 
         self.counter = 0
 
@@ -150,17 +144,12 @@ class Server:
                               MessageType.CLIENT_UPDATE_REQUEST,
                               MessageType.CLIENT_UPDATE]
 
-        # File server
-        self.file_server = web.Application()
-        self.file_server.router.add_post('/api/upload', self.handle_file_upload)
-        self.file_server.router.add_get('/{file_name}', self.handle_file_retrieval)
-
     def create_message(self, message_type):
         self.counter = self.counter + 1
 
         match message_type:
             case MessageType.SERVER_HELLO:
-                message_data = {"hostname": self.websocket_hostname}
+                message_data = {"hostname": self.hostname}
                 base64_signature = DataProcessing.create_base64_signature(self.private_key, message_data, self.counter)
 
                 return {
@@ -182,7 +171,7 @@ class Server:
                 }
 
             case MessageType.CLIENT_UPDATE_REQUEST:
-                message_data = {"hostname": self.websocket_hostname}
+                message_data = {"hostname": self.hostname}
                 base64_signature = DataProcessing.create_base64_signature(self.private_key, message_data, self.counter)
 
                 return {
@@ -193,7 +182,7 @@ class Server:
                 }
 
             case MessageType.CLIENT_UPDATE:
-                message_data = {"hostname": self.websocket_hostname,
+                message_data = {"hostname": self.hostname,
                                 "clients": list(self.clients.keys())}
                 base64_signature = DataProcessing.create_base64_signature(self.private_key, message_data, self.counter)
 
@@ -207,48 +196,20 @@ class Server:
             case _:
                 print(f"Cannot create message of type {message_type}")
 
-    async def handle_file_upload(self, request):
-        file_data = await request.read()
-
-        file_name = "file_" + str(int(time())) + "_" + str(uuid.uuid4().hex)
-        file_path = os.path.join("uploads", file_name)
-     
-        with open(file_path, 'wb') as f:
-            f.write(file_data)
-        
-        file_url = f"http://{request.host}/{file_name}"
-        
-        return web.json_response({'file_url': file_url})
-
-    async def handle_file_retrieval(self, request):
-        file_name = request.match_info['file_name']
-        file_path = os.path.join("uploads", file_name)
-        
-        if not os.path.exists(file_path):
-            return web.HTTPNotFound(text='File not found')
-        
-        return web.FileResponse(file_path)
-
     async def start_server(self):
         """ Begin the server and its core functions. """
 
         server_loop = websockets.serve(
-            self.handle_first, self.host, self.websocket_port, ssl=self.ssl_context)
+            self.handle_first, self.host, self.port, ssl=self.ssl_context)
 
         # Create listeners
         async with server_loop:
             # Start the server loop
-            print(f"Server started on {self.websocket_hostname}")
+            print(f"Server started on {self.hostname}")
             server_task = asyncio.create_task(self.wait_for_shutdown())
 
             # Establish neighborhood connections
             await self.connect_to_neighbourhood()
-
-            # Start file server
-            runner = web.AppRunner(self.file_server)
-            await runner.setup()
-            site = web.TCPSite(runner, host=self.host, port=self.file_server_port)
-            await site.start()
 
             # Wait until server is manually stopped
             await server_task
@@ -282,7 +243,7 @@ class Server:
         server_listeners = []
         for hostname in hostnames:
             # Don't connect to yourself, silly!
-            if (hostname == self.websocket_hostname):
+            if (hostname == self.hostname):
                 continue
 
             server_listeners.append(
@@ -379,7 +340,7 @@ class Server:
         client_data = ClientData(websocket, public_key)
         self.clients[client_data.id] = client_data
         self.socket_identifier[websocket] = client_data
-        self.all_clients[self.websocket_hostname].append(client_data.id)
+        self.all_clients[self.hostname].append(client_data.id)
 
         # Set up new listener
         new_listener = asyncio.create_task(self.listener(
@@ -425,7 +386,7 @@ class Server:
 
         # Remove the client
         del self.clients[client_id]
-        self.all_clients[self.websocket_hostname].remove(client_id)
+        self.all_clients[self.hostname].remove(client_id)
 
         # Log disconnect event
         print(f"Client disconnected with id: {client_id}")
@@ -574,7 +535,7 @@ class Server:
 
         # Propagate message to servers in the destination server list
         for hostname in destination_servers:
-            if hostname == self.websocket_hostname:
+            if hostname == self.hostname:
                 continue
             server_data = self.servers[hostname]
             if server_data is not None:
@@ -615,16 +576,10 @@ class Server:
 
 if __name__ == "__main__":
     # Read port from the command line
-    websocket_port = 1443
-    file_server_port = 2443
-    
-    # Read optional websocket port
+    port = 1443
     if len(sys.argv) > 1:
-        websocket_port = int(sys.argv[1])
-        
-    if len(sys.argv) > 2:
-        file_server_port = int(sys.argv[2])
-        
+        port = int(sys.argv[1])  # Ensure port is an integer
+
     # Begin and run server
-    server = Server("localhost", websocket_port, file_server_port)
+    server = Server("localhost", port)
     asyncio.run(server.start_server())
