@@ -5,11 +5,12 @@
 #include "connection.hpp"
 #include "data_processing.hpp"
 #include "messages.hpp"
+#include "web_connection.hpp"
 #include <iostream>
 #include <string>
 
-inline void cli(Connection &&connection, Client &&client,
-                std::atomic<bool> &running) {
+inline void cli(Connection &&connection, WebConnection &&web_connection,
+                Client &&client, std::atomic<bool> &running) {
     // Send hello message upon connecting [REQUIRED BY PROTOCOL]
     {
         auto message_data = std::make_unique<HelloData>(client.getPublicKey());
@@ -129,6 +130,23 @@ inline void cli(Connection &&connection, Client &&client,
             text_stream >> original_name >> new_name;
 
             client_data_handler.update_client_username(original_name, new_name);
+
+        } else if (command == "upload") {
+
+            std::string filename;
+            std::stringstream text_stream(text);
+            text_stream >> filename;
+
+            web_connection.write_file(filename);
+
+        } else if (command == "download") {
+
+            std::string filename;
+            std::stringstream text_stream(text);
+            text_stream >> filename;
+
+            web_connection.read_file(filename);
+
         } else {
             using namespace std::string_view_literals;
             if (command != "help"sv) {
