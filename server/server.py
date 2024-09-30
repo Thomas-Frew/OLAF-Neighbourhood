@@ -208,7 +208,14 @@ class Server:
                 print(f"Cannot create message of type {message_type}")
 
     async def handle_file_upload(self, request):
+        """ Recieve a binary file from the user and store it. """
         file_data = await request.read()
+        
+        file_size = sys.getsizeof(file_data)
+        size_in_mb = file_size / (1024 * 1024)
+        
+        if (size_in_mb > 10):
+            return web.Response(text="File size cannot exceed 10 MB.\n", status=413)
 
         file_name = "file_" + str(int(time())) + "_" + str(uuid.uuid4().hex)
         file_path = os.path.join("uploads", file_name)
@@ -221,11 +228,13 @@ class Server:
         return web.json_response({'file_url': file_url})
 
     async def handle_file_retrieval(self, request):
+        """ Return a stored file to the user. """
+        
         file_name = request.match_info['file_name']
         file_path = os.path.join("uploads", file_name)
         
         if not os.path.exists(file_path):
-            return web.HTTPNotFound(text='File not found')
+            return web.Response(text="The requested file does not exist.\n", status=404)
         
         return web.FileResponse(file_path)
 
