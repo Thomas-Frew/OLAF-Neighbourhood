@@ -223,7 +223,7 @@ class Server:
         with open(file_path, 'wb') as f:
             f.write(file_data)
         
-        file_url = f"http://{request.host}/{file_name}"
+        file_url = f"{request.host}/{file_name}"
         
         return web.json_response({'file_url': file_url})
 
