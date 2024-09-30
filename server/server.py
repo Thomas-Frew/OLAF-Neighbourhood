@@ -313,8 +313,8 @@ class Server:
                 case MessageType.SERVER_HELLO:
                     await self.handle_server_hello(websocket, message_data)
                 case _:
-                    print(f"Unestablished client sent message of type: {
-                          message_type}, closing connection")
+                    print("Unestablished client sent message of type: " +
+                          f"{message_type}, closing connection")
 
         except Exception as e:
             print(f"Unestablished connection closed due to error: {e}")
