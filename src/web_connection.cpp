@@ -63,7 +63,6 @@ auto WebConnection::write_file(std::string filename) -> void {
     // Initialize CURL
     curl = curl_easy_init();
     if (curl) {
-        std::cout << file_server_url + "/api/upload" << '\n';
         curl_easy_setopt(curl, CURLOPT_URL,
                          (file_server_url + "/api/upload").c_str());
 
