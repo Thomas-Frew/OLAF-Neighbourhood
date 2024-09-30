@@ -69,6 +69,8 @@ auto MessageHandler::handle_public_chat(Message &&message) -> void {
 
     const auto &data = static_cast<const PublicChatData &>(message.data());
 
+    std::cerr << "[FINGERPRINT] " << data.sender() << std::endl;
+
     std::cout << "[PUBLIC_CHAT] "
               << this->m_client_data_handler.get_username(
                      std::string{data.sender()})
@@ -98,14 +100,22 @@ auto MessageHandler::handle_private_chat(Message &&message) -> void {
 }
 
 auto MessageHandler::handle_client_list(Message &&message) -> void {
-    const auto &data = static_cast<const ClientListData &>(message.data());
+    auto &data = static_cast<ClientListData &>(message.data());
 
     // Register users
-    for (const auto &[server, client_list] : data.users()) {
-        for (const auto &client : client_list) {
-            if (!this->m_client_data_handler.is_registered(sha256(client))) {
+    for (auto &[server, client_list] : data.users()) {
+        for (auto &client : client_list) {
+            std::string backup = client;
+            try {
                 // auto{client} ensures we make a copy, not needed but cool :3
-                this->m_client_data_handler.register_client(auto{client});
+                client =
+                    this->m_client_data_handler.register_client(auto{client});
+                std::cerr << "[FINGERPRINT] " << client << ": "
+                          << this->m_client_data_handler.get_fingerprint(client)
+                          << std::endl;
+            } catch (const std::exception &e) {
+                std::cerr << "[CLIENT LIST ERROR] " << e.what() << std::endl;
+                client = backup;
             }
         }
     }
@@ -114,10 +124,7 @@ auto MessageHandler::handle_client_list(Message &&message) -> void {
     std::cout << "[ONLINE USERS]";
     for (const auto &[server, client_list] : data.users()) {
         for (const auto &client : client_list) {
-            std::cout << '\n'
-                      << this->m_client_data_handler.get_username(
-                             sha256(client))
-                      << '@' << server;
+            std::cout << '\n' << client << '@' << server;
         }
     }
     std::cout << std::endl;

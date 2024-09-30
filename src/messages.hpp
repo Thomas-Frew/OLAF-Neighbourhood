@@ -98,6 +98,10 @@ class ClientListData : public MessageData {
         return this->m_online_list;
     }
 
+    auto users() noexcept -> std::map<std::string, std::vector<std::string>> & {
+        return this->m_online_list;
+    }
+
   private:
     std::map<std::string, std::vector<std::string>> m_online_list;
 };
@@ -143,6 +147,7 @@ class Message {
 
     inline auto type() const -> MessageType { return m_type; }
     inline auto data() const -> const MessageData & { return *m_data; }
+    inline auto data() -> MessageData & { return *m_data; }
 
     explicit Message(MessageType type, std::unique_ptr<MessageData> &&data,
                      std::string signature, uint32_t counter)
