@@ -17,6 +17,10 @@ auto WebConnection::read_file(std::string resource) -> void {
     CURL *curl;
     CURLcode res;
     FILE *file;
+    std::string filename;
+
+    size_t last_slash = resource.find_last_of('/');
+    filename = resource.substr(last_slash + 1);
 
     // Initialize CURL
     curl = curl_easy_init();
@@ -28,7 +32,7 @@ auto WebConnection::read_file(std::string resource) -> void {
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 
         // Open the file for writing
-        file = fopen(resource.c_str(), "wb");
+        file = fopen(filename.c_str(), "wb");
         if (file) {
             // Set the write function to write the response data to the file
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
@@ -44,7 +48,7 @@ auto WebConnection::read_file(std::string resource) -> void {
 
             fclose(file);
         } else {
-            std::cerr << "Failed to open file for writing: " << resource
+            std::cerr << "Failed to open file for writing: " << filename
                       << std::endl;
         }
 
@@ -90,7 +94,7 @@ auto WebConnection::write_file(std::string filename) -> void {
                 std::cerr << "curl_easy_perform() failed: "
                           << curl_easy_strerror(res) << std::endl;
             }
-            
+
             fclose(file);
         } else {
             std::cerr << "Failed to open file: " << filename << std::endl;
