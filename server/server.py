@@ -368,8 +368,7 @@ class Server:
                 case MessageType.SERVER_HELLO:
                     await self.handle_server_hello(websocket, message_data)
                 case _:
-                    print(f"Unestablished client sent message of type: {
-                          message_type}, closing connection")
+                    print(f"Unestablished client sent message of type: {message_type}, closing connection")
 
         except Exception as e:
             print(f"Unestablished connection closed due to error: {e}")
@@ -612,7 +611,7 @@ class Server:
         """ Propagate a message to all servers in the neighbourhood. """
 
         for server_data in self.servers.values():
-            print(f"Propagating message to {server_data.hostname}")
+            print(f"Propagating message to {server_data.websocket_hostname}")
             try:
                 match message:
                     case str(s):
@@ -620,7 +619,7 @@ class Server:
                     case _:
                         await server_data.websocket.send(json.dumps(message))
             except Exception as e:
-                print(f"Failed to propagate to {server_data.hostname}: {e}")
+                print(f"Failed to propagate to {server_data.websocket_hostname}: {e}")
 
     async def propagate_message_to_clients(self, message):
         """ Propagate a message to all connected clients of the server. """
