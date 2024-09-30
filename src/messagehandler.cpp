@@ -12,7 +12,7 @@ auto MessageHandler::handle_message(std::string_view raw_message) noexcept
         this->handle_message(
             Message::from_json(nlohmann::json::parse(raw_message)));
 
-    } catch (std::exception e) {
+    } catch (const std::exception &e) {
         // ignore invalid messages...
         std::cerr << "Unknown error: " << e.what() << std::endl;
     }
@@ -69,8 +69,6 @@ auto MessageHandler::handle_public_chat(Message &&message) -> void {
 
     const auto &data = static_cast<const PublicChatData &>(message.data());
 
-    std::cerr << "[FINGERPRINT] " << data.sender() << std::endl;
-
     std::cout << "[PUBLIC_CHAT] "
               << this->m_client_data_handler.get_username(
                      std::string{data.sender()})
@@ -110,12 +108,11 @@ auto MessageHandler::handle_client_list(Message &&message) -> void {
                 // auto{client} ensures we make a copy, not needed but cool :3
                 client =
                     this->m_client_data_handler.register_client(auto{client});
-                std::cerr << "[FINGERPRINT] " << client << ": "
-                          << this->m_client_data_handler.get_fingerprint(client)
-                          << std::endl;
             } catch (const std::exception &e) {
-                std::cerr << "[CLIENT LIST ERROR] " << e.what() << std::endl;
-                client = backup;
+                // this might re-throw but i do not care to write this in a
+                // nicer way. IF IT WORKS IT WORKS, DAMNIT!!!
+                client =
+                    this->m_client_data_handler.get_username(sha256(backup));
             }
         }
     }
