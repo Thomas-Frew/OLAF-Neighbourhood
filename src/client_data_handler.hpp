@@ -2,10 +2,9 @@
 #include "data_processing.hpp"
 #include <atomic>
 #include <cstdint>
-#include <format>
+#include <map>
 #include <mutex>
 #include <string>
-#include <unordered_map>
 #include <utility>
 
 class ClientDataHandler {
@@ -29,8 +28,8 @@ class ClientDataHandler {
 
     auto get_fingerprint(const std::string &username) -> std::string;
 
-    auto
-    get_pubkey_from_fingerprint(const std::string &fingerprint) -> std::string;
+    auto get_pubkey_from_fingerprint(const std::string &fingerprint)
+        -> std::string;
     auto get_pubkey_from_username(const std::string &username) -> std::string;
 
   private:
@@ -44,12 +43,12 @@ class ClientDataHandler {
     /**
      * Maps fingerprints to client data
      */
-    std::unordered_map<std::string, ClientData> m_registered_users;
+    std::map<std::string, ClientData> m_registered_users;
 
     /**
      * Maps usernames to fingerprints
      */
-    std::unordered_map<std::string, std::string> m_username_map;
+    std::map<std::string, std::string> m_username_map;
 
     /**
      * Get client data from a fingerprint. Assumes we have a lock on the global
@@ -74,8 +73,8 @@ class ClientDataHandler {
      * Get client data from a username, in a const context. Assumes we have a
      * lock on the global mutex.
      */
-    auto
-    client_of_username(const std::string &username) const -> const ClientData &;
+    auto client_of_username(const std::string &username) const
+        -> const ClientData &;
 
     class ClientData {
       public:
@@ -86,7 +85,7 @@ class ClientDataHandler {
 
         ClientData(std::string public_key)
             : ClientData(public_key,
-                         std::format("unknown_user_{}", m_counter++)) {}
+                         "unknown_user_" + std::to_string(m_counter++)) {}
 
         auto update_username(std::string new_username) -> void {
             this->m_username = std::move(new_username);

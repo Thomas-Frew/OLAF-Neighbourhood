@@ -106,8 +106,7 @@ auto MessageHandler::handle_client_list(Message &&message) -> void {
             std::string backup = client;
             try {
                 // auto{client} ensures we make a copy, not needed but cool :3
-                client =
-                    this->m_client_data_handler.register_client(auto{client});
+                client = this->m_client_data_handler.register_client(client);
             } catch (const std::exception &e) {
                 // this might re-throw but i do not care to write this in a
                 // nicer way. IF IT WORKS IT WORKS, DAMNIT!!!
