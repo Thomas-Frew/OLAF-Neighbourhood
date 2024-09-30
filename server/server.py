@@ -247,7 +247,7 @@ class Server:
             # Start file server
             runner = web.AppRunner(self.file_server)
             await runner.setup()
-            site = web.TCPSite(runner, host=self.host, port=self.file_server_port)
+            site = web.TCPSite(runner, host=self.host, port=self.file_server_port, ssl_context=self.ssl_context)
             await site.start()
 
             # Wait until server is manually stopped
