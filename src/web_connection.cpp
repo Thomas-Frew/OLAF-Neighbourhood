@@ -13,7 +13,7 @@ static size_t WriteCallback(void *contents, size_t size, size_t nmemb,
 WebConnection::WebConnection(std::string host, std::string port)
     : file_server_url("https://" + host + ":" + port) {}
 
-auto WebConnection::read_file(std::string filename) -> void {
+auto WebConnection::read_file(std::string resource) -> void {
     CURL *curl;
     CURLcode res;
     FILE *file;
@@ -21,15 +21,14 @@ auto WebConnection::read_file(std::string filename) -> void {
     // Initialize CURL
     curl = curl_easy_init();
     if (curl) {
-        curl_easy_setopt(curl, CURLOPT_URL,
-                         (file_server_url + "/" + filename).c_str());
+        curl_easy_setopt(curl, CURLOPT_URL, resource.c_str());
 
         // Skip SSL certificate verification (equivalent to -k in curl)
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 
         // Open the file for writing
-        file = fopen(filename.c_str(), "wb");
+        file = fopen(resource.c_str(), "wb");
         if (file) {
             // Set the write function to write the response data to the file
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
@@ -45,7 +44,7 @@ auto WebConnection::read_file(std::string filename) -> void {
 
             fclose(file);
         } else {
-            std::cerr << "Failed to open file for writing: " << filename
+            std::cerr << "Failed to open file for writing: " << resource
                       << std::endl;
         }
 
@@ -90,10 +89,8 @@ auto WebConnection::write_file(std::string filename) -> void {
             if (res != CURLE_OK) {
                 std::cerr << "curl_easy_perform() failed: "
                           << curl_easy_strerror(res) << std::endl;
-            } else {
-                std::cout << "File uploaded successfully!" << std::endl;
             }
-
+            
             fclose(file);
         } else {
             std::cerr << "Failed to open file: " << filename << std::endl;
