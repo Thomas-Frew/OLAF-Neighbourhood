@@ -229,13 +229,17 @@ class Server:
 
     async def handle_file_retrieval(self, request):
         """ Return a stored file to the user. """
-        
         file_name = request.match_info['file_name']
-        file_path = os.path.join("uploads", file_name)
-        
+        uploads_dir = os.path.abspath("uploads")  # Get absolute path of the 'uploads' directory
+        file_path = os.path.abspath(os.path.join(uploads_dir, file_name))  # Get absolute path of the file
+
+        # Ensure the file_path is within the uploads directory
+        if not file_path.startswith(uploads_dir):
+            return web.Response(text="Access denied.\n", status=403)
+
         if not os.path.exists(file_path):
             return web.Response(text="The requested file does not exist.\n", status=404)
-        
+
         return web.FileResponse(file_path)
 
     async def start_server(self):
