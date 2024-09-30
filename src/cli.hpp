@@ -123,6 +123,12 @@ inline void cli(Connection &&connection, Client &&client,
 
             connection.write(message.to_json().dump(4));
 
+        } else if (command == "rename") {
+            std::string original_name, new_name;
+            std::stringstream text_stream(text);
+            text_stream >> original_name >> new_name;
+
+            client_data_handler.update_client_username(original_name, new_name);
         } else {
             using namespace std::string_view_literals;
             if (command != "help"sv) {
@@ -135,6 +141,9 @@ inline void cli(Connection &&connection, Client &&client,
                       << std::endl;
             std::cout << "\tchat [N] [user1@hostname1] ... [userN@hostnameN] "
                          "[message]\tSend a message to certain users"
+                      << std::endl;
+            std::cout << "\trename [old_username] [new_username]\tRename an "
+                         "existing user"
                       << std::endl;
         }
     }
