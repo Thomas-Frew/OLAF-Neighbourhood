@@ -8,7 +8,7 @@ class Client {
   public:
     Client(std::string public_key, std::string private_key)
         : m_public_key(public_key), m_private_key(private_key),
-          m_identifier(base64_encode(sha256(public_key))), m_counter(0) {}
+          m_identifier(sha256(public_key)), m_counter(0) {}
 
     std::string &getPublicKey();
     std::string &getPrivateKey();
