@@ -68,7 +68,7 @@ auto MessageHandler::handle_public_chat(Message &&message) -> void {
             std::cout << "[SYSTEM] Outdated client list!" << std::endl;
             this->m_unhandled_messages.push_back(std::move(message));
         }
-        break;
+        return;
     }
 
     std::cout << "[PUBLIC_CHAT] "
@@ -135,7 +135,7 @@ auto MessageHandler::verify_message(const Message &message,
                                     const std::string &fingerprint) const
     -> VerificationStatus {
     auto message_string =
-        message.data().to_json().dump(4) + std::to_string(message.counter());
+        message.data().to_json().dump() + std::to_string(message.counter());
 
     try {
         const auto &public_key =
