@@ -43,3 +43,4 @@ client/*
 server/uploads/
 *.pem
 *.olaf
+server/*/certs/

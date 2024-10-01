@@ -81,10 +81,14 @@ class MessageType(Enum):
 
 
 class ServerData:
-    def __init__(self, websocket, hostname):
-        self.websocket = websocket
+    def __init__(self, hostname, public_key):
         self.websocket_hostname = hostname
         self.id = hostname
+        self.public_key = public_key
+        self.websocket = None
+
+    def add_websocket(self, websocket):
+        self.websocket = websocket
 
 
 class ClientData:
@@ -294,20 +298,34 @@ class Server:
         auth_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
 
         # TODO: Get the cert of the server you want to connect to
-        auth_context.load_verify_locations(cafile="cert.pem")
+        auth_context.load_verify_locations(capath="certs")
 
         # NOTE: Currently, neighbourhood.olaf is a glorified IP list.
         # This will change. It will include public keys.
         with open('neighbourhood.olaf', 'r') as file:
-            # Ensure no leading/trailing whitespace
-            hostnames = [line.strip() for line in file]
+            hosts = []
+            lines = [line.strip() for line in file]
+            curr_host = ''
+            curr_key = ''
+
+            for line in lines:
+                if line == '':
+                    hosts.append((curr_host, curr_key))
+                    curr_host = ''
+                    curr_key = ''
+                elif curr_host == '':
+                    curr_host = line
+                else:
+                    curr_key += f'{line}\n'
 
         # Connect to all servers in the neighbourhood
         server_listeners = []
-        for hostname in hostnames:
+        for hostname, public_key in hosts:
             # Don't connect to yourself, silly!
             if (hostname == self.websocket_hostname):
                 continue
+
+            self.servers[hostname] = ServerData(hostname, public_key)
 
             server_listeners.append(
                 self.connect_to_server(hostname, auth_context))
@@ -327,8 +345,8 @@ class Server:
                 f"wss://{hostname}/", ssl=auth_context
             )
 
-            server_data = ServerData(websocket, hostname)
-            self.servers[hostname] = server_data
+            self.servers[hostname].add_websocket(websocket)
+            server_data = self.servers[hostname]
             self.socket_identifier[websocket] = server_data
             self.all_clients[hostname] = []
 
@@ -378,8 +396,11 @@ class Server:
 
     async def handle_server_hello(self, websocket, message_data):
         """ Handle SERVER_HELLO messages. """
+
+        # TODO: Verify server hello
         hostname = message_data.get('hostname')
-        server_data = ServerData(websocket, hostname)
+        server_data = ServerData(hostname, message_data.get('public_key'))
+        server_data.add_websocket(websocket)
         self.servers[hostname] = server_data
         self.socket_identifier[websocket] = server_data
         self.all_clients[hostname] = []
@@ -467,10 +488,9 @@ class Server:
         # Find the server by websocket
         hostname = self.socket_identifier[websocket].id
         del self.socket_identifier[websocket]
-
-        # Remove the server
-        del self.servers[hostname]
         del self.all_clients[hostname]
+
+        self.servers[hostname].websocket = None
 
         # Log disconnect event
         print(f"Server disconnected with hostname: {hostname}")
@@ -493,7 +513,11 @@ class Server:
 
         # Verify signature for servers
         if (message_type in self.server_signed):
-            self.verify_message(self.public_key, message_json, message_data)
+            self.verify_message(
+                self.socket_identifier[websocket].public_key,
+                message_json,
+                message_data
+            )
 
         print(f"Recieved message from server of type {message_type}")
 
@@ -609,6 +633,8 @@ class Server:
         """ Propagate a message to all servers in the neighbourhood. """
 
         for server_data in self.servers.values():
+            if server_data.websocket is None:
+                continue
             try:
                 match message:
                     case str(s):
