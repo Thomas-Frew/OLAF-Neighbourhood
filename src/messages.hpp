@@ -127,6 +127,10 @@ class PrivateChatData : public MessageData {
         return this->m_message;
     };
 
+    inline auto symm_keys() const noexcept -> std::vector<std::string> {
+        return this->m_symm_keys;
+    };
+
     inline auto participants() const noexcept -> std::vector<std::string> {
         return this->m_participants;
     };
