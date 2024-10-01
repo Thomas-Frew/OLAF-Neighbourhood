@@ -164,6 +164,11 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
             std::cout << "\trename [old_username] [new_username]\tRename an "
                          "existing user"
                       << std::endl;
+            std::cout << "\tupload [filename]\tUpload a file to the server"
+                      << std::endl;
+            std::cout
+                << "\tdownload [filename]\tDownload a file from the server"
+                << std::endl;
         }
     }
 }
