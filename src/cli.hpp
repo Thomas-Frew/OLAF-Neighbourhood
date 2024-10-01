@@ -135,7 +135,8 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
         } else if (command == "rename") {
             std::string original_name, new_name;
             std::stringstream text_stream(text);
-            text_stream >> original_name >> new_name;
+            text_stream >> original_name;
+            std::getline(text_stream, new_name);
 
             client_data_handler.update_client_username(original_name, new_name);
 
@@ -156,6 +157,10 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
 
             web_connection.read_file(filename);
 
+        } else if (command == "exit") {
+            connection.close();
+            running = false;
+            break;
         } else {
             using namespace std::string_view_literals;
             if (command != "help"sv) {
