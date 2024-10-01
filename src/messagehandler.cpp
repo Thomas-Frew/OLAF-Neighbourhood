@@ -96,18 +96,23 @@ auto MessageHandler::handle_private_chat(Message &&message) -> void {
         break;
     }
 
-    const auto &data = static_cast<const PrivateChatData &>(message.data());
+    auto encrypted_symm_keys = data.symm_keys();
+    const std::string text = std::string(data.message());
+    const std::string sender =
+        this->m_client_data_handler.get_username(data.participants().front());
 
-    std::string public_key =
-        this->m_client_data_handler.get_pubkey_from_fingerprint(
-            data.participants().front());
+    for (auto &encrypted_symm_key : encrypted_symm_keys) {
+        auto symm_key = decrypt_RSA(
+            encrypted_symm_key, this->m_client_data_handler.get_private_key());
 
-    const std::string message = std::string(data.message());
+        if (!symm_key)
+            continue;
 
-    std::cout << "[PRIVATE_CHAT] "
-              << this->m_client_data_handler.get_username(
-                     data.participants().front())
-              << ": " << aes_gcm_decrypt(message, public_key) << std::endl;
+        auto decrypted_text = aes_gcm_decrypt(text, *symm_key);
+        std::cout << "[PRIVATE_CHAT] " << sender << ": " << decrypted_text
+                  << std::endl;
+        break;
+    }
 }
 
 auto MessageHandler::handle_client_list(Message &&message) -> void {

@@ -11,6 +11,8 @@
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 #include <openssl/x509.h>
+#include <optional>
+#include <random>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -20,6 +22,18 @@ inline void handle_openssl_error() { ERR_print_errors_fp(stderr); }
 inline void handle_encryption_errors() {
     ERR_print_errors_fp(stderr);
     throw std::runtime_error("Error occurred during encryption/decryption.");
+}
+
+inline std::string generate_random_AES_key() {
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::uniform_int_distribution<int> distribution(0, 255);
+
+    std::string key;
+    for (size_t i = 0; i < 16; ++i) {
+        key.push_back(static_cast<char>(distribution(generator)));
+    }
+    return key;
 }
 
 inline std::string base64_encode(const std::string &input) {
@@ -68,6 +82,79 @@ inline std::string base64_decode(const std::string &input) {
 
     // Create a string from the buffer with the decoded data
     return std::string(buffer, decoded_length);
+}
+
+inline std::string encrypt_RSA(const std::string &plaintext,
+                               const std::string &key) {
+    // Create RSA structure from PEM string
+    RSA *rsa = nullptr;
+    BIO *bio = BIO_new_mem_buf((void *)key.c_str(), -1);
+    if (bio == nullptr) {
+        throw std::runtime_error("Failed to create BIO.");
+    }
+
+    rsa = PEM_read_bio_RSA_PUBKEY(bio, nullptr, nullptr, nullptr);
+    BIO_free(bio);
+
+    if (rsa == nullptr) {
+        throw std::runtime_error("Failed to read RSA public key.");
+    }
+
+    // Encrypt the plaintext
+    std::string ciphertext(RSA_size(rsa), '\0');
+    int result = RSA_public_encrypt(
+        plaintext.size(), (unsigned char *)plaintext.c_str(),
+        (unsigned char *)ciphertext.data(), rsa, RSA_PKCS1_OAEP_PADDING);
+
+    RSA_free(rsa);
+
+    // Check for errors during encryption
+    if (result == -1) {
+        throw std::runtime_error(
+            "RSA encryption failed: " +
+            std::string(ERR_error_string(ERR_get_error(), nullptr)));
+    }
+
+    // Resize the ciphertext to actual length
+    ciphertext.resize(result);
+    return base64_encode(ciphertext);
+}
+
+inline std::optional<std::string> decrypt_RSA(const std::string &ciphertext,
+                                              const std::string &key) {
+    // Decode base64 ciphertext
+    std::string decoded_ciphertext = base64_decode(ciphertext);
+
+    // Create RSA structure from PEM string
+    RSA *rsa = nullptr;
+    BIO *bio = BIO_new_mem_buf((void *)key.c_str(), -1);
+    if (bio == nullptr) {
+        return std::nullopt;
+    }
+
+    rsa = PEM_read_bio_RSAPrivateKey(bio, nullptr, nullptr, nullptr);
+    BIO_free(bio);
+
+    if (rsa == nullptr) {
+        return std::nullopt;
+    }
+
+    // Decrypt the ciphertext
+    std::string plaintext(RSA_size(rsa), '\0');
+    int result = RSA_private_decrypt(
+        decoded_ciphertext.size(), (unsigned char *)decoded_ciphertext.c_str(),
+        (unsigned char *)plaintext.data(), rsa, RSA_PKCS1_OAEP_PADDING);
+
+    RSA_free(rsa);
+
+    // Check for errors during decryption
+    if (result == -1) {
+        return std::nullopt;
+    }
+
+    // Resize the plaintext to actual length
+    plaintext.resize(result);
+    return plaintext;
 }
 
 inline std::string aes_gcm_encrypt(const std::string &plaintext,

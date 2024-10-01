@@ -28,6 +28,7 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
     }
 
     ClientDataHandler &client_data_handler = ClientDataHandler::get_instance();
+    client_data_handler.set_private_key(client.getPrivateKey());
 
     // Register self
     {
@@ -85,21 +86,27 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
             std::vector<std::string> symm_keys;
             std::vector<std::string> participants = {client.getIdentifier()};
 
+            std::string base_symm_key = generate_random_AES_key();
+
             for (uint16_t i = 0; i < num_users; i++) {
                 text_stream >> canonical_user >> std::ws;
 
                 size_t pos = canonical_user.find("@");
-                std::string pub_key = canonical_user.substr(0, pos);
+                std::string username = canonical_user.substr(0, pos);
                 std::string server = canonical_user.substr(pos + 1);
-                std::string symm_key = "temp_key";
 
                 servers.push_back(server);
+
+                std::string symm_key = encrypt_RSA(
+                    base_symm_key,
+                    client_data_handler.get_pubkey_from_username(username));
+
                 symm_keys.push_back(symm_key);
-                participants.push_back(pub_key);
+                participants.push_back(username);
             }
 
             std::getline(text_stream, text);
-            text = aes_gcm_encrypt(text, client.getPublicKey());
+            text = aes_gcm_encrypt(text, base_symm_key);
 
             auto message_data = std::make_unique<PrivateChatData>(
                 std::move(servers), "0", std::move(symm_keys),

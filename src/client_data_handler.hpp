@@ -24,16 +24,26 @@ class ClientDataHandler {
 
     auto register_client(const std::string &public_key) -> std::string;
 
+    auto set_private_key(std::string key) -> void {
+        this->m_private_key = std::move(key);
+    }
+
+    auto get_private_key() const -> const std::string & {
+        return this->m_private_key;
+    };
+
     auto get_username(const std::string &fingerprint) -> std::string;
 
     auto get_fingerprint(const std::string &username) -> std::string;
 
-    auto
-    get_pubkey_from_fingerprint(const std::string &fingerprint) -> std::string;
+    auto get_pubkey_from_fingerprint(const std::string &fingerprint)
+        -> std::string;
     auto get_pubkey_from_username(const std::string &username) -> std::string;
 
   private:
     ClientDataHandler() = default;
+
+    std::string m_private_key;
 
     /**
      * Global mutex for maps + client data
@@ -73,8 +83,8 @@ class ClientDataHandler {
      * Get client data from a username, in a const context. Assumes we have a
      * lock on the global mutex.
      */
-    auto
-    client_of_username(const std::string &username) const -> const ClientData &;
+    auto client_of_username(const std::string &username) const
+        -> const ClientData &;
 
     class ClientData {
       public:
