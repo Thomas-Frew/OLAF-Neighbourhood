@@ -447,7 +447,7 @@ class Server:
         # Find the client by websocket
         client_data = self.socket_identifier[websocket]
         del self.socket_identifier[websocket]
-        
+
         # Remove the client
         del self.clients[client_data.id]
         self.all_clients[self.websocket_hostname].remove(client_data.id)
@@ -591,12 +591,7 @@ class Server:
     async def handle_private_chat_client(self, message, message_data):
         """ Handle PRIVATE_CHAT message from client. """
 
-        destination_servers = message_data.get('destination_servers')
-
-        # Ensure message is valid
-        if (len(destination_servers) != len(set(destination_servers))):
-            print("Invalid private chat - duplicate servers in list. Ignoring")
-            return
+        destination_servers = set(message_data.get('destination_servers'))
 
         # Propagate message to servers in the destination server list
         for hostname in destination_servers:
@@ -621,7 +616,8 @@ class Server:
                     case _:
                         await server_data.websocket.send(json.dumps(message))
             except Exception as e:
-                print(f"Failed to propagate to {server_data.websocket_hostname}: {e}")
+                print(f"Failed to propagate to {
+                      server_data.websocket_hostname}: {e}")
 
     async def propagate_message_to_clients(self, message):
         """ Propagate a message to all connected clients of the server. """
