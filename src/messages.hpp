@@ -2,8 +2,10 @@
 
 #include <memory>
 #include <nlohmann/json.hpp>
+#include <span>
 #include <string>
 #include <string_view>
+#include <vector>
 
 enum class MessageType : uint8_t {
     HELLO,
