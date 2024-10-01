@@ -11,6 +11,10 @@ import base64
 import hashlib
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
+import os
+import uuid
+from time import time
+from aiohttp import web
 
 
 class DataProcessing():
@@ -79,7 +83,7 @@ class MessageType(Enum):
 class ServerData:
     def __init__(self, websocket, hostname):
         self.websocket = websocket
-        self.hostname = hostname
+        self.websocket_hostname = hostname
         self.id = hostname
 
 
@@ -92,7 +96,7 @@ class ClientData:
 
 
 class Server:
-    def __init__(self, host, port):
+    def __init__(self, host, websocket_port, file_server_port):
         # Suppress specific deprecation warnings for SSL options
         warnings.filterwarnings("ignore", category=DeprecationWarning,
                                 message="ssl.OP_NO_TLS*")
@@ -101,15 +105,17 @@ class Server:
 
         # Server details
         self.host = host
-        self.port = port
-        self.hostname = f"{host}:{port}"
+        self.websocket_port = websocket_port
+        self.websocket_hostname = f"{host}:{websocket_port}"
+        self.file_server_port = file_server_port
+        self.file_server_hostname = f"{host}:{file_server_port}"
 
         self.clients = {}  # Client Fingerprint -> Client Data
         self.servers = {}  # Server Hostname -> Server Data
         self.socket_identifier = {}  # WebSocket -> Identifier
 
         self.all_clients = {}  # Server Hostname -> User ID List
-        self.all_clients[self.hostname] = []
+        self.all_clients[self.websocket_hostname] = []
 
         self.counter = 0
 
@@ -145,12 +151,19 @@ class Server:
                               MessageType.CLIENT_UPDATE_REQUEST,
                               MessageType.CLIENT_UPDATE]
 
+        # File server
+        self.file_server = web.Application()
+        self.file_server.router.add_post(
+            '/api/upload', self.handle_file_upload)
+        self.file_server.router.add_get(
+            '/{file_name}', self.handle_file_retrieval)
+
     def create_message(self, message_type):
         self.counter = self.counter + 1
 
         match message_type:
             case MessageType.SERVER_HELLO:
-                message_data = {"hostname": self.hostname}
+                message_data = {"hostname": self.websocket_hostname}
                 base64_signature = DataProcessing.create_base64_signature(
                     self.private_key, message_data, self.counter)
 
@@ -175,7 +188,7 @@ class Server:
                 }
 
             case MessageType.CLIENT_UPDATE_REQUEST:
-                message_data = {"hostname": self.hostname}
+                message_data = {"hostname": self.websocket_hostname}
                 base64_signature = DataProcessing.create_base64_signature(
                     self.private_key, message_data, self.counter)
 
@@ -187,7 +200,7 @@ class Server:
                 }
 
             case MessageType.CLIENT_UPDATE:
-                message_data = {"hostname": self.hostname,
+                message_data = {"hostname": self.websocket_hostname,
                                 "clients": list(self.clients.keys())}
                 base64_signature = DataProcessing.create_base64_signature(
                     self.private_key, message_data, self.counter)
@@ -202,20 +215,64 @@ class Server:
             case _:
                 print(f"Cannot create message of type {message_type}")
 
+    async def handle_file_upload(self, request):
+        """ Recieve a binary file from the user and store it. """
+        file_data = await request.read()
+
+        file_size = sys.getsizeof(file_data)
+        size_in_mb = file_size / (1024 * 1024)
+
+        if (size_in_mb > 10):
+            return web.Response(text="File size cannot exceed 10 MB.\n", status=413)
+
+        file_name = "file_" + str(int(time())) + "_" + str(uuid.uuid4().hex)
+        file_path = os.path.join("uploads", file_name)
+
+        with open(file_path, 'wb') as f:
+            f.write(file_data)
+
+        file_url = f"{request.host}/{file_name}"
+
+        return web.json_response({'file_url': file_url})
+
+    async def handle_file_retrieval(self, request):
+        """ Return a stored file to the user. """
+        file_name = request.match_info['file_name']
+        # Get absolute path of the 'uploads' directory
+        uploads_dir = os.path.abspath("uploads")
+        # Get absolute path of the file
+        file_path = os.path.abspath(os.path.join(uploads_dir, file_name))
+
+        # Ensure the file_path is within the uploads directory
+        if not file_path.startswith(uploads_dir):
+            return web.Response(text="Access denied.\n", status=403)
+
+        if not os.path.exists(file_path):
+            return web.Response(text="The requested file does not exist.\n", status=404)
+
+        return web.FileResponse(file_path)
+
     async def start_server(self):
         """ Begin the server and its core functions. """
 
         server_loop = websockets.serve(
-            self.handle_first, self.host, self.port, ssl=self.ssl_context)
+            self.handle_first, self.host, self.websocket_port, ssl=self.ssl_context)
 
         # Create listeners
         async with server_loop:
             # Start the server loop
-            print(f"Server started on {self.hostname}")
+            print(f"Server started on {self.websocket_hostname}")
             server_task = asyncio.create_task(self.wait_for_shutdown())
 
             # Establish neighborhood connections
             await self.connect_to_neighbourhood()
+
+            # Start file server
+            runner = web.AppRunner(self.file_server)
+            await runner.setup()
+            site = web.TCPSite(
+                runner, host=self.host, port=self.file_server_port, ssl_context=self.ssl_context)
+            await site.start()
 
             # Wait until server is manually stopped
             await server_task
@@ -249,7 +306,7 @@ class Server:
         server_listeners = []
         for hostname in hostnames:
             # Don't connect to yourself, silly!
-            if (hostname == self.hostname):
+            if (hostname == self.websocket_hostname):
                 continue
 
             server_listeners.append(
@@ -347,7 +404,7 @@ class Server:
         client_data = ClientData(websocket, public_key)
         self.clients[client_data.id] = client_data
         self.socket_identifier[websocket] = client_data
-        self.all_clients[self.hostname].append(client_data.id)
+        self.all_clients[self.websocket_hostname].append(client_data.id)
 
         # Set up new listener
         new_listener = asyncio.create_task(self.listener(
@@ -393,7 +450,7 @@ class Server:
 
         # Remove the client
         del self.clients[client_id]
-        self.all_clients[self.hostname].remove(client_id)
+        self.all_clients[self.websocket_hostname].remove(client_id)
 
         # Log disconnect event
         print(f"Client disconnected with id: {client_id}")
@@ -543,7 +600,7 @@ class Server:
 
         # Propagate message to servers in the destination server list
         for hostname in destination_servers:
-            if hostname == self.hostname:
+            if hostname == self.websocket_hostname:
                 continue
             server_data = self.servers[hostname]
             if server_data is not None:
@@ -557,7 +614,7 @@ class Server:
         """ Propagate a message to all servers in the neighbourhood. """
 
         for server_data in self.servers.values():
-            print(f"Propagating message to {server_data.hostname}")
+            print(f"Propagating message to {server_data.websocket_hostname}")
             try:
                 match message:
                     case str(s):
@@ -565,7 +622,7 @@ class Server:
                     case _:
                         await server_data.websocket.send(json.dumps(message))
             except Exception as e:
-                print(f"Failed to propagate to {server_data.hostname}: {e}")
+                print(f"Failed to propagate to {server_data.websocket_hostname}: {e}")
 
     async def propagate_message_to_clients(self, message):
         """ Propagate a message to all connected clients of the server. """
@@ -584,10 +641,16 @@ class Server:
 
 if __name__ == "__main__":
     # Read port from the command line
-    port = 1443
+    websocket_port = 1443
+    file_server_port = 2443
+
+    # Read optional websocket port
     if len(sys.argv) > 1:
-        port = int(sys.argv[1])  # Ensure port is an integer
+        websocket_port = int(sys.argv[1])
+
+    if len(sys.argv) > 2:
+        file_server_port = int(sys.argv[2])
 
     # Begin and run server
-    server = Server("localhost", port)
+    server = Server("localhost", websocket_port, file_server_port)
     asyncio.run(server.start_server())
