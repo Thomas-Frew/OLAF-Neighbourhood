@@ -5,11 +5,12 @@
 #include "connection.hpp"
 #include "data_processing.hpp"
 #include "messages.hpp"
+#include "web_connection.hpp"
 #include <iostream>
 #include <string>
 
-inline void cli(Connection &&connection, Client &&client,
-                std::atomic<bool> &running) {
+inline void cli(Connection &&connection, WebConnection &&web_connection,
+                Client &&client, std::atomic<bool> &running) {
     // Send hello message upon connecting [REQUIRED BY PROTOCOL]
     {
         auto message_data = std::make_unique<HelloData>(client.getPublicKey());
@@ -129,6 +130,24 @@ inline void cli(Connection &&connection, Client &&client,
             text_stream >> original_name >> new_name;
 
             client_data_handler.update_client_username(original_name, new_name);
+
+        } else if (command == "upload") {
+
+            std::string filename;
+            std::stringstream text_stream(text);
+            text_stream >> filename;
+
+            std::string response = web_connection.write_file(filename);
+            std::cout << response << '\n';
+
+        } else if (command == "download") {
+
+            std::string filename;
+            std::stringstream text_stream(text);
+            text_stream >> filename;
+
+            web_connection.read_file(filename);
+
         } else {
             using namespace std::string_view_literals;
             if (command != "help"sv) {
@@ -145,6 +164,11 @@ inline void cli(Connection &&connection, Client &&client,
             std::cout << "\trename [old_username] [new_username]\tRename an "
                          "existing user"
                       << std::endl;
+            std::cout << "\tupload [filename]\tUpload a file to the server"
+                      << std::endl;
+            std::cout
+                << "\tdownload https://[host]/[filename]\tDownload a file from the server"
+                << std::endl;
         }
     }
 }
