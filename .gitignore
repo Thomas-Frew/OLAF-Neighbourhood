@@ -45,3 +45,4 @@ server/server.key
 server/server.csr
 server/*.olaf
 server/server.pkey
+server/uploads/
