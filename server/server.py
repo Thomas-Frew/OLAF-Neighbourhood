@@ -48,7 +48,8 @@ class DataProcessing():
         return signature
 
     def create_base64_signature(private_key, message_data, counter):
-        data_string = json.dumps(message_data, separators=(',', ':')) + str(counter)
+        data_string = json.dumps(
+            message_data, separators=(',', ':')) + str(counter)
         signature = DataProcessing.sign_message(private_key, data_string)
         base64_signature = DataProcessing.base64_encode(signature)
         return base64_signature
@@ -152,8 +153,10 @@ class Server:
 
         # File server
         self.file_server = web.Application()
-        self.file_server.router.add_post('/api/upload', self.handle_file_upload)
-        self.file_server.router.add_get('/{file_name}', self.handle_file_retrieval)
+        self.file_server.router.add_post(
+            '/api/upload', self.handle_file_upload)
+        self.file_server.router.add_get(
+            '/{file_name}', self.handle_file_retrieval)
 
     def create_message(self, message_type):
         self.counter = self.counter + 1
@@ -161,7 +164,8 @@ class Server:
         match message_type:
             case MessageType.SERVER_HELLO:
                 message_data = {"hostname": self.websocket_hostname}
-                base64_signature = DataProcessing.create_base64_signature(self.private_key, message_data, self.counter)
+                base64_signature = DataProcessing.create_base64_signature(
+                    self.private_key, message_data, self.counter)
 
                 return {
                     "type": MessageType.SERVER_HELLO.value,
@@ -183,7 +187,8 @@ class Server:
 
             case MessageType.CLIENT_UPDATE_REQUEST:
                 message_data = {"hostname": self.websocket_hostname}
-                base64_signature = DataProcessing.create_base64_signature(self.private_key, message_data, self.counter)
+                base64_signature = DataProcessing.create_base64_signature(
+                    self.private_key, message_data, self.counter)
 
                 return {
                     "type": MessageType.CLIENT_UPDATE_REQUEST.value,
@@ -195,7 +200,8 @@ class Server:
             case MessageType.CLIENT_UPDATE:
                 message_data = {"hostname": self.websocket_hostname,
                                 "clients": list(self.clients.keys())}
-                base64_signature = DataProcessing.create_base64_signature(self.private_key, message_data, self.counter)
+                base64_signature = DataProcessing.create_base64_signature(
+                    self.private_key, message_data, self.counter)
 
                 return {
                     "type": MessageType.CLIENT_UPDATE.value,
@@ -210,28 +216,30 @@ class Server:
     async def handle_file_upload(self, request):
         """ Recieve a binary file from the user and store it. """
         file_data = await request.read()
-        
+
         file_size = sys.getsizeof(file_data)
         size_in_mb = file_size / (1024 * 1024)
-        
+
         if (size_in_mb > 10):
             return web.Response(text="File size cannot exceed 10 MB.\n", status=413)
 
         file_name = "file_" + str(int(time())) + "_" + str(uuid.uuid4().hex)
         file_path = os.path.join("uploads", file_name)
-     
+
         with open(file_path, 'wb') as f:
             f.write(file_data)
-        
+
         file_url = f"{request.host}/{file_name}"
-        
+
         return web.json_response({'file_url': file_url})
 
     async def handle_file_retrieval(self, request):
         """ Return a stored file to the user. """
         file_name = request.match_info['file_name']
-        uploads_dir = os.path.abspath("uploads")  # Get absolute path of the 'uploads' directory
-        file_path = os.path.abspath(os.path.join(uploads_dir, file_name))  # Get absolute path of the file
+        # Get absolute path of the 'uploads' directory
+        uploads_dir = os.path.abspath("uploads")
+        # Get absolute path of the file
+        file_path = os.path.abspath(os.path.join(uploads_dir, file_name))
 
         # Ensure the file_path is within the uploads directory
         if not file_path.startswith(uploads_dir):
@@ -260,7 +268,8 @@ class Server:
             # Start file server
             runner = web.AppRunner(self.file_server)
             await runner.setup()
-            site = web.TCPSite(runner, host=self.host, port=self.file_server_port, ssl_context=self.ssl_context)
+            site = web.TCPSite(
+                runner, host=self.host, port=self.file_server_port, ssl_context=self.ssl_context)
             await site.start()
 
             # Wait until server is manually stopped
@@ -359,7 +368,8 @@ class Server:
                 case MessageType.SERVER_HELLO:
                     await self.handle_server_hello(websocket, message_data)
                 case _:
-                    print(f"Unestablished client sent message of type: {message_type}, closing connection")
+                    print(f"Unestablished client sent message of type: {
+                          message_type}, closing connection")
 
         except Exception as e:
             print(f"Unestablished connection closed due to error: {e}")
@@ -464,7 +474,8 @@ class Server:
         print(f"Server disconnected with hostname: {hostname}")
 
     def verify_message(self, public_key, message_json, message_data):
-        data_string = json.dumps(message_data, separators=(',', ':')) + str(message_json.get('counter'))
+        data_string = json.dumps(message_data, separators=(
+            ',', ':')) + str(message_json.get('counter'))
 
         base64_signature = message_json.get('signature')
         signature = DataProcessing.base64_decode(base64_signature)
@@ -630,14 +641,14 @@ if __name__ == "__main__":
     # Read port from the command line
     websocket_port = 1443
     file_server_port = 2443
-    
+
     # Read optional websocket port
     if len(sys.argv) > 1:
         websocket_port = int(sys.argv[1])
-        
+
     if len(sys.argv) > 2:
         file_server_port = int(sys.argv[2])
-        
+
     # Begin and run server
     server = Server("localhost", websocket_port, file_server_port)
     asyncio.run(server.start_server())
