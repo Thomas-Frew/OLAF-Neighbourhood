@@ -86,6 +86,8 @@ localhost:1444
 ...
 ```
 
+Place all self-signed server certificates in a directory called `certs`, and then run `c_rehash certs`.
+
 ### Building the Server
 The Client is written in Python and, therefore, does not get built.
 
