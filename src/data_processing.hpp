@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fstream>
+#include <iostream>
 #include <openssl/bio.h>
 #include <openssl/buffer.h>
 #include <openssl/err.h>
@@ -42,6 +43,27 @@ inline std::string base64_encode(const std::string &input) {
     return encoded_data;
 }
 
+inline std::string base64_decode(const std::string &input) {
+    BIO *bio, *b64;
+    char buffer[input.size()]; // Buffer to hold the decoded data
+    int decoded_length;
+
+    // Create BIO filters for base64 decoding and memory buffer
+    b64 = BIO_new(BIO_f_base64());
+    bio = BIO_new_mem_buf(input.c_str(), input.size());
+    bio = BIO_push(b64, bio);
+
+    // Disable newline handling
+    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+
+    // Perform the decoding
+    decoded_length = BIO_read(bio, buffer, input.size());
+    BIO_free_all(bio);
+
+    // Create a string from the buffer with the decoded data
+    return std::string(buffer, decoded_length);
+}
+
 inline std::string sha256(const std::string &input) {
     unsigned char hash[SHA256_DIGEST_LENGTH];
     SHA256_CTX sha256;
@@ -68,7 +90,10 @@ inline std::string load_key(const std::string &filename) {
 
 inline bool verify_signature(const std::string &public_key_pem,
                              const std::string &message,
-                             const std::string &signature) {
+                             const std::string &encoded_signature) {
+
+    auto signature = base64_decode(encoded_signature);
+
     const EVP_MD *md = EVP_sha256();
     EVP_PKEY *public_key = nullptr;
     BIO *bio = BIO_new_mem_buf(public_key_pem.data(), -1);
@@ -101,6 +126,23 @@ inline bool verify_signature(const std::string &public_key_pem,
         return false;
     }
 
+    // Set the padding to PSS with a salt length of 32 bytes
+    if (1 != EVP_PKEY_CTX_set_rsa_padding(EVP_MD_CTX_pkey_ctx(mdctx),
+                                          RSA_PKCS1_PSS_PADDING)) {
+        handle_openssl_error();
+        EVP_MD_CTX_free(mdctx);
+        EVP_PKEY_free(public_key);
+        return false;
+    }
+
+    // Set the salt length to 32 bytes
+    if (1 != EVP_PKEY_CTX_set_rsa_pss_saltlen(EVP_MD_CTX_pkey_ctx(mdctx), 32)) {
+        handle_openssl_error();
+        EVP_MD_CTX_free(mdctx);
+        EVP_PKEY_free(public_key);
+        return false;
+    }
+
     // Update the context with the message data
     if (1 != EVP_DigestVerifyUpdate(mdctx, message.data(), message.size())) {
         handle_openssl_error();
@@ -123,6 +165,7 @@ inline bool verify_signature(const std::string &public_key_pem,
 
 inline std::string sign_message(const std::string &private_key_pem,
                                 const std::string &message) {
+
     const EVP_MD *md = EVP_sha256();
     EVP_PKEY *private_key = nullptr;
 

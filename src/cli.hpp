@@ -64,7 +64,7 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
 
             uint32_t counter = client.getCounter();
             std::string data_string =
-                message_data->to_json().dump() + std::to_string(counter);
+                message_data->to_json().dump(4) + std::to_string(counter);
             std::string signature =
                 sign_message(client.getPrivateKey(), data_string);
 
@@ -106,7 +106,7 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
 
             uint32_t counter = client.getCounter();
             std::string data_string =
-                message_data->to_json().dump() + std::to_string(counter);
+                message_data->to_json().dump(4) + std::to_string(counter);
             std::string signature =
                 sign_message(client.getPrivateKey(), data_string);
 
@@ -166,9 +166,9 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
                       << std::endl;
             std::cout << "\tupload [filename]\tUpload a file to the server"
                       << std::endl;
-            std::cout
-                << "\tdownload https://[host]/[filename]\tDownload a file from the server"
-                << std::endl;
+            std::cout << "\tdownload https://[host]/[filename]\tDownload a "
+                         "file from the server"
+                      << std::endl;
         }
     }
 }
