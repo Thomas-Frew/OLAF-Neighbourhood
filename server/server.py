@@ -12,6 +12,7 @@ import hashlib
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 import os
+import re
 import uuid
 from time import time
 from aiohttp import web
@@ -218,10 +219,11 @@ class Server:
         """ Recieve a binary file from the user and store it. """
         file_data = await request.read()
 
-        file_size = sys.getsizeof(file_data)
-        size_in_mb = file_size / (1024 * 1024)
+        # Limit files to 1 MB
+        string_size =  sys.getsizeof(re.sub(rb'\n+$', b'', file_data))       
+        size_in_mb = string_size / (1024*1024)
 
-        if (size_in_mb > 10):
+        if (size_in_mb > 1):
             return web.Response(text="File size cannot exceed 10 MB.\n", status=413)
 
         file_name = "file_" + str(int(time())) + "_" + str(uuid.uuid4().hex)
