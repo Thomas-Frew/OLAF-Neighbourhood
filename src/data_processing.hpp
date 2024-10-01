@@ -13,6 +13,7 @@
 #include <openssl/sha.h>
 #include <openssl/x509.h>
 #include <optional>
+#include <random>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -22,6 +23,19 @@ inline void handle_openssl_error() { ERR_print_errors_fp(stderr); }
 inline void handle_encryption_errors() {
     ERR_print_errors_fp(stderr);
     throw std::runtime_error("Error occurred during encryption/decryption.");
+}
+
+inline std::string generateRandomAESKey() {
+    std::random_device rd;        // Seed for the random number generator
+    std::mt19937 generator(rd()); // Mersenne Twister generator
+    std::uniform_int_distribution<int> distribution(0,
+                                                    255); // Range for each byte
+
+    std::string key;
+    for (size_t i = 0; i < 16; ++i) {
+        key.push_back(static_cast<char>(distribution(generator)));
+    }
+    return key;
 }
 
 inline std::string base64_encode(const std::string &input) {

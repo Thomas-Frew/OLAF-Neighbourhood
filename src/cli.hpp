@@ -86,8 +86,8 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
             std::vector<std::string> symm_keys;
             std::vector<std::string> participants = {client.getIdentifier()};
 
-            std::string base_symm_key = "AAAAAAAAAAAAAAAA";
-
+            std::string base_symm_key = generateRandomAESKey();
+            
             for (uint16_t i = 0; i < num_users; i++) {
                 text_stream >> canonical_user >> std::ws;
 
