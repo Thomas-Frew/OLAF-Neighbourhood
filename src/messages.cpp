@@ -183,5 +183,10 @@ auto Message::from_json(const nlohmann::json &j) -> Message {
     } break;
     }
 
-    return Message{type, std::move(data)};
+    if (!is_signed(type)) {
+        return Message{type, std::move(data)};
+    }
+
+    return Message{type, std::move(data), j.at("signature").get<std::string>(),
+                   j.at("counter").get<uint32_t>()};
 }
