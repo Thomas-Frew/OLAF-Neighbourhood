@@ -445,15 +445,15 @@ class Server:
         """ Handle client disconnection. """
 
         # Find the client by websocket
-        client_id = self.socket_identifier[websocket]
+        client_data = self.socket_identifier[websocket]
         del self.socket_identifier[websocket]
-
+        
         # Remove the client
-        del self.clients[client_id]
-        self.all_clients[self.websocket_hostname].remove(client_id)
+        del self.clients[client_data.id]
+        self.all_clients[self.websocket_hostname].remove(client_data.id)
 
         # Log disconnect event
-        print(f"Client disconnected with id: {client_id}")
+        print(f"Client disconnected with id: {client_data.id}")
 
         # Notify other servers about the update
         client_update_message = self.create_message(
@@ -614,7 +614,6 @@ class Server:
         """ Propagate a message to all servers in the neighbourhood. """
 
         for server_data in self.servers.values():
-            print(f"Propagating message to {server_data.websocket_hostname}")
             try:
                 match message:
                     case str(s):
@@ -628,7 +627,6 @@ class Server:
         """ Propagate a message to all connected clients of the server. """
 
         for client_data in self.clients.values():
-            print(f"Propagating message to client {client_data.id}")
             try:
                 match message:
                     case str(s):
