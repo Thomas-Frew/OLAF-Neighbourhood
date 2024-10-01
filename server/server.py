@@ -142,8 +142,7 @@ class Server:
                 key_file.read(), backend=default_backend())
 
         # Message types where a client's message must be signed
-        self.client_signed = [MessageType.HELLO,
-                              MessageType.PUBLIC_CHAT,
+        self.client_signed = [MessageType.PUBLIC_CHAT,
                               MessageType.PRIVATE_CHAT]
 
         # Messge type where a server's message must be signed
