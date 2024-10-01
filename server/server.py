@@ -616,8 +616,8 @@ class Server:
                     case _:
                         await server_data.websocket.send(json.dumps(message))
             except Exception as e:
-                print(f"Failed to propagate to {
-                      server_data.websocket_hostname}: {e}")
+                print("Failed to propagate to" +
+                      f"{server_data.websocket_hostname}: {e}")
 
     async def propagate_message_to_clients(self, message):
         """ Propagate a message to all connected clients of the server. """

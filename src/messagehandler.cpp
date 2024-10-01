@@ -96,8 +96,6 @@ auto MessageHandler::handle_private_chat(Message &&message) -> void {
         break;
     }
 
-    const auto &data = static_cast<const PrivateChatData &>(message.data());
-
     auto encrypted_symm_keys = data.symm_keys();
     const std::string text = std::string(data.message());
     const std::string sender =
@@ -106,7 +104,7 @@ auto MessageHandler::handle_private_chat(Message &&message) -> void {
     for (auto &encrypted_symm_key : encrypted_symm_keys) {
         auto symm_key = decrypt_RSA(
             encrypted_symm_key, this->m_client_data_handler.get_private_key());
-      
+
         if (!symm_key)
             continue;
 

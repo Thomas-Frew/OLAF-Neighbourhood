@@ -85,7 +85,7 @@ inline std::string base64_decode(const std::string &input) {
 }
 
 inline std::string encrypt_RSA(const std::string &plaintext,
-                              const std::string &key) {
+                               const std::string &key) {
     // Create RSA structure from PEM string
     RSA *rsa = nullptr;
     BIO *bio = BIO_new_mem_buf((void *)key.c_str(), -1);
@@ -121,7 +121,7 @@ inline std::string encrypt_RSA(const std::string &plaintext,
 }
 
 inline std::optional<std::string> decrypt_RSA(const std::string &ciphertext,
-                                             const std::string &key) {
+                                              const std::string &key) {
     // Decode base64 ciphertext
     std::string decoded_ciphertext = base64_decode(ciphertext);
 
