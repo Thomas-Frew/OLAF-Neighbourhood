@@ -137,9 +137,7 @@ inline std::optional<std::string> decryptRSA(const std::string &ciphertext,
 
     // Check for errors during decryption
     if (result == -1) {
-        throw std::runtime_error(
-            "RSA decryption failed: " +
-            std::string(ERR_error_string(ERR_get_error(), nullptr)));
+        return std::nullopt;
     }
 
     // Resize the plaintext to actual length
