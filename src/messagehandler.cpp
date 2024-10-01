@@ -1,4 +1,5 @@
 #include "messagehandler.hpp"
+#include "data_processing.hpp"
 #include "messages.hpp"
 #include <iostream>
 #include <nlohmann/json.hpp>
@@ -91,10 +92,16 @@ auto MessageHandler::handle_private_chat(Message &&message) -> void {
 
     const auto &data = static_cast<const PrivateChatData &>(message.data());
 
+    std::string public_key =
+        this->m_client_data_handler.get_pubkey_from_fingerprint(
+            data.participants()[0]);
+
+    const std::string message = std::string(data.message());
+
     std::cout << "[PRIVATE_CHAT] "
               << this->m_client_data_handler.get_username(
                      data.participants().at(0))
-              << ": " << data.message() << std::endl;
+              << ": " << aes_gcm_decrypt(message, public_key) << std::endl;
 }
 
 auto MessageHandler::handle_client_list(Message &&message) -> void {
