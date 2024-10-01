@@ -167,7 +167,7 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
             std::cout << "\tupload [filename]\tUpload a file to the server"
                       << std::endl;
             std::cout
-                << "\tdownload [filename]\tDownload a file from the server"
+                << "\tdownload https://[host]/[filename]\tDownload a file from the server"
                 << std::endl;
         }
     }
