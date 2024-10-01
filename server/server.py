@@ -129,15 +129,15 @@ class Server:
 
         # Load certificate chain
         self.ssl_context.load_cert_chain(
-            certfile="server.cert", keyfile="server.key")
+            certfile="cert.pem", keyfile="private_key.pem")
 
         # Load private key
-        with open("server.key", "rb") as key_file:
+        with open("private_key.pem", "rb") as key_file:
             self.private_key = serialization.load_pem_private_key(
                 key_file.read(), password=None, backend=default_backend())
 
         # Load public key
-        with open("server.pkey", "rb") as key_file:
+        with open("public_key.pem", "rb") as key_file:
             self.public_key = serialization.load_pem_public_key(
                 key_file.read(), backend=default_backend())
 
@@ -294,7 +294,7 @@ class Server:
         auth_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
 
         # TODO: Get the cert of the server you want to connect to
-        auth_context.load_verify_locations(cafile="server.cert")
+        auth_context.load_verify_locations(cafile="cert.pem")
 
         # NOTE: Currently, neighbourhood.olaf is a glorified IP list.
         # This will change. It will include public keys.
