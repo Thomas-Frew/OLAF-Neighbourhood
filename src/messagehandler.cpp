@@ -98,7 +98,7 @@ auto MessageHandler::handle_private_chat(Message &&message) -> void {
         this->m_client_data_handler.get_username(data.participants().front());
 
     for (auto &encrypted_symm_key : encrypted_symm_keys) {
-        auto symm_key = decryptRSA(
+        auto symm_key = decrypt_RSA(
             encrypted_symm_key, this->m_client_data_handler.get_private_key());
 
         if (!symm_key)

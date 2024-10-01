@@ -25,11 +25,10 @@ inline void handle_encryption_errors() {
     throw std::runtime_error("Error occurred during encryption/decryption.");
 }
 
-inline std::string generateRandomAESKey() {
-    std::random_device rd;        // Seed for the random number generator
-    std::mt19937 generator(rd()); // Mersenne Twister generator
-    std::uniform_int_distribution<int> distribution(0,
-                                                    255); // Range for each byte
+inline std::string generate_random_AES_key() {
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::uniform_int_distribution<int> distribution(0, 255);
 
     std::string key;
     for (size_t i = 0; i < 16; ++i) {
@@ -86,7 +85,7 @@ inline std::string base64_decode(const std::string &input) {
     return std::string(buffer, decoded_length);
 }
 
-inline std::string encryptRSA(const std::string &plaintext,
+inline std::string encrypt_RSA(const std::string &plaintext,
                               const std::string &key) {
     // Create RSA structure from PEM string
     RSA *rsa = nullptr;
@@ -122,7 +121,7 @@ inline std::string encryptRSA(const std::string &plaintext,
     return base64_encode(ciphertext);
 }
 
-inline std::optional<std::string> decryptRSA(const std::string &ciphertext,
+inline std::optional<std::string> decrypt_RSA(const std::string &ciphertext,
                                              const std::string &key) {
     // Decode base64 ciphertext
     std::string decoded_ciphertext = base64_decode(ciphertext);

@@ -86,8 +86,8 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
             std::vector<std::string> symm_keys;
             std::vector<std::string> participants = {client.getIdentifier()};
 
-            std::string base_symm_key = generateRandomAESKey();
-            
+            std::string base_symm_key = generate_random_AES_key();
+
             for (uint16_t i = 0; i < num_users; i++) {
                 text_stream >> canonical_user >> std::ws;
 
@@ -97,7 +97,7 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
 
                 servers.push_back(server);
 
-                std::string symm_key = encryptRSA(
+                std::string symm_key = encrypt_RSA(
                     base_symm_key,
                     client_data_handler.get_pubkey_from_username(username));
 
