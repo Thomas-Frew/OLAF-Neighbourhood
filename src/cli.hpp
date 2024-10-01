@@ -99,6 +99,7 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
             }
 
             std::getline(text_stream, text);
+            text = aes_gcm_encrypt(text, client.getPublicKey());
 
             auto message_data = std::make_unique<PrivateChatData>(
                 std::move(servers), "0", std::move(symm_keys),
@@ -166,9 +167,9 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
                       << std::endl;
             std::cout << "\tupload [filename]\tUpload a file to the server"
                       << std::endl;
-            std::cout
-                << "\tdownload https://[host]/[filename]\tDownload a file from the server"
-                << std::endl;
+            std::cout << "\tdownload https://[host]/[filename]\tDownload a "
+                         "file from the server"
+                      << std::endl;
         }
     }
 }
