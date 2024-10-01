@@ -74,7 +74,7 @@ openssl rsa -in private_key.pem -pubout -out public_key.pem
 
 ### Defining the Neighbourhood
 
-The server requires a file containing all hostnames of servers in their neighbourhood (in the form `host:port`). These are stored in `neighbourhood.olaf` as plaintext, followed by the server's public key. Subsequent servers are separated by a newline.
+The server requires a file containing all hostnames of servers in their neighbourhood (in the form `host:port`). These are stored in `neighbourhood.olaf` as plaintext, followed by the server's public key. Subsequent servers are separated by an empty line. The file must be terminated by an empty line.
 
 ```
 localhost:1443
