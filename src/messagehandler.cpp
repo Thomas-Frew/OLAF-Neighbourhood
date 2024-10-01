@@ -1,6 +1,7 @@
 #include "messagehandler.hpp"
 #include "data_processing.hpp"
 #include "messages.hpp"
+#include <exception>
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <utility>
@@ -55,7 +56,9 @@ enum class MessageHandler::VerificationStatus {
 };
 
 auto MessageHandler::handle_public_chat(Message &&message) -> void {
-    switch (this->verify_message(message)) {
+    const auto &data = static_cast<const PublicChatData &>(message.data());
+
+    switch (this->verify_message(message, data.sender_ref())) {
     case VerificationStatus::Verified:
         break;
     case VerificationStatus::InvalidSignature:
@@ -65,10 +68,8 @@ auto MessageHandler::handle_public_chat(Message &&message) -> void {
             std::cout << "[SYSTEM] Outdated client list!" << std::endl;
             this->m_unhandled_messages.push_back(std::move(message));
         }
-        break;
+        return;
     }
-
-    const auto &data = static_cast<const PublicChatData &>(message.data());
 
     std::cout << "[PUBLIC_CHAT] "
               << this->m_client_data_handler.get_username(
@@ -77,7 +78,12 @@ auto MessageHandler::handle_public_chat(Message &&message) -> void {
 }
 
 auto MessageHandler::handle_private_chat(Message &&message) -> void {
-    switch (this->verify_message(message)) {
+    const auto &data = static_cast<const PrivateChatData &>(message.data());
+    if (data.participants().size() != data.keys().size() + 1UZ) {
+        return;
+    }
+
+    switch (this->verify_message(message, data.participants().front())) {
     case VerificationStatus::Verified:
         break;
     case VerificationStatus::InvalidSignature:
@@ -100,7 +106,7 @@ auto MessageHandler::handle_private_chat(Message &&message) -> void {
     for (auto &encrypted_symm_key : encrypted_symm_keys) {
         auto symm_key = decrypt_RSA(
             encrypted_symm_key, this->m_client_data_handler.get_private_key());
-
+      
         if (!symm_key)
             continue;
 
@@ -140,8 +146,20 @@ auto MessageHandler::handle_client_list(Message &&message) -> void {
     std::cout << std::endl;
 }
 
-auto MessageHandler::verify_message(const Message &message) const
+auto MessageHandler::verify_message(const Message &message,
+                                    const std::string &fingerprint) const
     -> VerificationStatus {
-    // TODO: Verify messages
-    return VerificationStatus::Verified;
+    auto message_string =
+        message.data().to_json().dump() + std::to_string(message.counter());
+
+    try {
+        const auto &public_key =
+            this->m_client_data_handler.get_pubkey_from_fingerprint(
+                fingerprint);
+        return verify_signature(public_key, message_string, message.signature())
+                   ? VerificationStatus::Verified
+                   : VerificationStatus::InvalidSignature;
+    } catch (const std::exception &e) {
+        return VerificationStatus::UnknownUser;
+    }
 }

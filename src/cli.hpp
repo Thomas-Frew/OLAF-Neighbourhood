@@ -24,7 +24,7 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
 
         Message message{MessageType::HELLO, std::move(message_data), signature,
                         counter};
-        connection.write(message.to_json().dump(4));
+        connection.write(message.to_json().dump());
     }
 
     ClientDataHandler &client_data_handler = ClientDataHandler::get_instance();
@@ -45,7 +45,7 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
     {
         Message message{MessageType::CLIENT_LIST_REQUEST,
                         std::make_unique<ClientListRequestData>()};
-        connection.write(message.to_json().dump(4));
+        connection.write(message.to_json().dump());
     }
 
     while (running) {
@@ -72,7 +72,7 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
             Message message{MessageType::PUBLIC_CHAT, std::move(message_data),
                             signature, counter};
 
-            connection.write(message.to_json().dump(4));
+            connection.write(message.to_json().dump());
 
         } else if (command == "private_chat" || command == "chat") {
 
@@ -121,7 +121,7 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
             Message message{MessageType::PRIVATE_CHAT, std::move(message_data),
                             signature, counter};
 
-            connection.write(message.to_json().dump(4));
+            connection.write(message.to_json().dump());
 
         } else if (command == "online_list") {
 
@@ -130,7 +130,7 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
             Message message{MessageType::CLIENT_LIST_REQUEST,
                             std::move(message_data)};
 
-            connection.write(message.to_json().dump(4));
+            connection.write(message.to_json().dump());
 
         } else if (command == "rename") {
             std::string original_name, new_name;
