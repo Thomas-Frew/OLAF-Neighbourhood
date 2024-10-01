@@ -67,12 +67,24 @@ The server requires a 2048-bit RSA private key, public key, and a certificate. T
 You can generate them with the following commands:
 ```bash
 openssl genrsa -out private_key.pem 2048
-openssl req -new -key private_key.pem -out server.csr
+openssl req -new -key private_key.pem -out csr.pem
 openssl x509 -req -days 30 -in server.csr -signkey private_key.pem -out cert.pem
 openssl rsa -in private_key.pem -pubout -out public_key.pem
 ```
 
-The server also required a file containing all hostnames of servers in their neighbourhood (in the form `host:port`). These are stored in `neighbourhood.olaf` as plaintext.
+### Defining the Neighbourhood
+
+The server requires a file containing all hostnames of servers in their neighbourhood (in the form `host:port`). These are stored in `neighbourhood.olaf` as plaintext, followed by the server's public key. Subsequent servers are separated by a newline.
+
+```
+localhost:1443
+-----BEGIN PUBLIC KEY-----
+...
+-----END PUBLIC KEY-----
+
+localhost:1444
+...
+```
 
 ### Building the Server
 The Client is written in Python and, therefore, does not get built.
