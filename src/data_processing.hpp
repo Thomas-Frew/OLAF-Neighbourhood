@@ -1,7 +1,6 @@
 #pragma once
 
 #include <fstream>
-#include <iostream>
 #include <openssl/bio.h>
 #include <openssl/buffer.h>
 #include <openssl/err.h>
