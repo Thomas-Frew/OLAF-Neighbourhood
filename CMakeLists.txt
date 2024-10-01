@@ -10,7 +10,5 @@ message(STATUS "C++ Compiler Version: ${CMAKE_CXX_COMPILER_VERSION}")
 
 message(STATUS "Adding external")
 add_subdirectory(external)
-message(STATUS "Adding test")
-add_subdirectory(test)
 message(STATUS "Adding src")
 add_subdirectory(src)

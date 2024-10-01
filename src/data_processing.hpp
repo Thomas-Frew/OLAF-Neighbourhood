@@ -1,8 +1,6 @@
 #pragma once
 
 #include <fstream>
-#include <iomanip>
-#include <iostream>
 #include <openssl/bio.h>
 #include <openssl/buffer.h>
 #include <openssl/err.h>
@@ -42,6 +40,30 @@ inline std::string base64_encode(const std::string &input) {
     BIO_free_all(bio);
 
     return encoded_data;
+}
+
+inline std::string sha256(const std::string &input) {
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256_CTX sha256;
+
+    // Initialize, update, and finalize the SHA-256 hash computation
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, input.c_str(), input.size());
+    SHA256_Final(hash, &sha256);
+
+    std::string hash_str{reinterpret_cast<char *>(hash), SHA256_DIGEST_LENGTH};
+    return base64_encode(hash_str);
+}
+
+inline std::string load_key(const std::string &filename) {
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        throw std::runtime_error("Failed to open file: " + filename);
+    }
+
+    std::ostringstream oss;
+    oss << file.rdbuf();
+    return oss.str();
 }
 
 inline bool verify_signature(const std::string &public_key_pem,
@@ -187,34 +209,4 @@ inline std::string sign_message(const std::string &private_key_pem,
     EVP_PKEY_free(private_key);
 
     return base64_encode(signature);
-}
-
-inline std::string sha256(const std::string &input) {
-    unsigned char hash[SHA256_DIGEST_LENGTH];
-    SHA256_CTX sha256;
-
-    // Initialize, update, and finalize the SHA-256 hash computation
-    SHA256_Init(&sha256);
-    SHA256_Update(&sha256, input.c_str(), input.size());
-    SHA256_Final(hash, &sha256);
-
-    // Convert the hash to a hex string
-    std::stringstream input_stream;
-    for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
-        input_stream << std::hex << std::setw(2) << std::setfill('0')
-                     << (int)hash[i];
-    }
-
-    return input_stream.str();
-}
-
-inline std::string load_key(const std::string &filename) {
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        throw std::runtime_error("Failed to open file: " + filename);
-    }
-
-    std::ostringstream oss;
-    oss << file.rdbuf();
-    return oss.str();
 }

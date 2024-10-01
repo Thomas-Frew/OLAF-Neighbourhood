@@ -38,8 +38,8 @@ class HelloData : public MessageData {
     constexpr auto type() const -> MessageType;
     auto to_json() const -> nlohmann::json;
 
-    explicit HelloData(std::string_view public_key)
-        : m_public_key(public_key) {}
+    explicit HelloData(std::string public_key)
+        : m_public_key(std::move(public_key)) {}
 
     static auto from_json(const nlohmann::json &j)
         -> std::unique_ptr<HelloData>;
@@ -53,9 +53,8 @@ class PublicChatData : public MessageData {
     constexpr auto type() const -> MessageType;
     auto to_json() const -> nlohmann::json;
 
-    explicit PublicChatData(std::string_view public_key,
-                            std::string_view message)
-        : m_public_key(public_key), m_message(message) {}
+    explicit PublicChatData(std::string fingerprint, std::string message)
+        : m_sender(std::move(fingerprint)), m_message(std::move(message)) {}
 
     static auto from_json(const nlohmann::json &j)
         -> std::unique_ptr<PublicChatData>;
@@ -64,12 +63,12 @@ class PublicChatData : public MessageData {
         return this->m_message;
     };
 
-    inline auto public_key() const noexcept -> std::string_view {
-        return this->m_public_key;
+    inline auto sender() const noexcept -> std::string_view {
+        return this->m_sender;
     };
 
   private:
-    std::string m_public_key;
+    std::string m_sender;
     std::string m_message;
 };
 
@@ -96,6 +95,10 @@ class ClientListData : public MessageData {
 
     auto users() const noexcept
         -> const std::map<std::string, std::vector<std::string>> & {
+        return this->m_online_list;
+    }
+
+    auto users() noexcept -> std::map<std::string, std::vector<std::string>> & {
         return this->m_online_list;
     }
 
@@ -144,9 +147,10 @@ class Message {
 
     inline auto type() const -> MessageType { return m_type; }
     inline auto data() const -> const MessageData & { return *m_data; }
+    inline auto data() -> MessageData & { return *m_data; }
 
     explicit Message(MessageType type, std::unique_ptr<MessageData> &&data,
-                     std::string_view signature, uint32_t counter)
+                     std::string signature, uint32_t counter)
         : m_type(type), m_data(std::move(data)), m_signature(signature),
           m_counter(counter) {}
 
@@ -156,6 +160,6 @@ class Message {
   private:
     MessageType m_type;
     std::unique_ptr<MessageData> m_data;
-    std::string_view m_signature;
+    std::string m_signature;
     uint32_t m_counter;
 };

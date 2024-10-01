@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
 
     // Print output while its available
     std::atomic<bool> running = true;
-    std::thread output_thread([&conn, &running]() {
+    std::jthread output_thread([&conn, &running]() {
         MessageHandler handler;
         try {
             while (running) {
@@ -54,7 +54,4 @@ int main(int argc, char **argv) {
     // Close the WebSocket connection
     running = false;
     conn.close();
-
-    // If we get here then the connection is closed gracefully
-    output_thread.join();
 }

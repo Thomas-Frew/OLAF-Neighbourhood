@@ -110,8 +110,8 @@ class Server:
         self.file_server_port = file_server_port
         self.file_server_hostname = f"{host}:{file_server_port}"
 
-        self.clients = {}  # Client Public Key -> Socket
-        self.servers = {}  # Server Hostname -> Socket
+        self.clients = {}  # Client Fingerprint -> Client Data
+        self.servers = {}  # Server Hostname -> Server Data
         self.socket_identifier = {}  # WebSocket -> Identifier
 
         self.all_clients = {}  # Server Hostname -> User ID List
@@ -180,7 +180,9 @@ class Server:
                     "servers": [
                         {
                             "address": address,
-                            "clients": client_list,
+                            "clients": [
+                                self.clients[client].public_key for client in client_list
+                            ],
                         } for address, client_list in self.all_clients.items()
                     ]
                 }
@@ -368,7 +370,8 @@ class Server:
                 case MessageType.SERVER_HELLO:
                     await self.handle_server_hello(websocket, message_data)
                 case _:
-                    print(f"Unestablished client sent message of type: {message_type}, closing connection")
+                    print("Unestablished client sent message of type: " +
+                          f"{message_type}, closing connection")
 
         except Exception as e:
             print(f"Unestablished connection closed due to error: {e}")
