@@ -96,10 +96,18 @@ auto MessageHandler::handle_private_chat(Message &&message) -> void {
         break;
     }
 
+    const auto &data = static_cast<const PrivateChatData &>(message.data());
+
+    std::string public_key =
+        this->m_client_data_handler.get_pubkey_from_fingerprint(
+            data.participants().front());
+
+    const std::string message = std::string(data.message());
+
     std::cout << "[PRIVATE_CHAT] "
               << this->m_client_data_handler.get_username(
                      data.participants().front())
-              << ": " << data.message() << std::endl;
+              << ": " << aes_gcm_decrypt(message, public_key) << std::endl;
 }
 
 auto MessageHandler::handle_client_list(Message &&message) -> void {

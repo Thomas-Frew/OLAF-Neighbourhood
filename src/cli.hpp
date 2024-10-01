@@ -99,6 +99,7 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
             }
 
             std::getline(text_stream, text);
+            text = aes_gcm_encrypt(text, client.getPublicKey());
 
             auto message_data = std::make_unique<PrivateChatData>(
                 std::move(servers), "0", std::move(symm_keys),
