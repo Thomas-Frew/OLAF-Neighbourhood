@@ -12,6 +12,7 @@ import hashlib
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 import os
+import re
 import uuid
 from time import time
 from aiohttp import web
@@ -157,8 +158,7 @@ class Server:
                 key_file.read(), backend=default_backend())
 
         # Message types where a client's message must be signed
-        self.client_signed = [MessageType.HELLO,
-                              MessageType.PUBLIC_CHAT,
+        self.client_signed = [MessageType.PUBLIC_CHAT,
                               MessageType.PRIVATE_CHAT]
 
         # Messge type where a server's message must be signed
@@ -217,12 +217,13 @@ class Server:
     async def handle_file_upload(self, request):
         """ Recieve a binary file from the user and store it. """
         file_data = await request.read()
+        
+        # Limit files to 5000kB
+        string_size = sys.getsizeof(file_data.decode('utf-8').rstrip())
+        size_in_mb = string_size / 1000
 
-        file_size = sys.getsizeof(file_data)
-        size_in_mb = file_size / (1024 * 1024)
-
-        if (size_in_mb > 10):
-            return web.Response(text="File size cannot exceed 10 MB.\n", status=413)
+        if (size_in_mb > 500):
+            return web.Response(text="File size cannot exceed 500 kB.\n", status=413)
 
         file_name = "file_" + str(int(time())) + "_" + str(uuid.uuid4().hex)
         file_path = os.path.join("uploads", file_name)
@@ -237,17 +238,21 @@ class Server:
     async def handle_file_retrieval(self, request):
         """ Return a stored file to the user. """
         file_name = request.match_info['file_name']
-        # Get absolute path of the 'uploads' directory
+        
+        # Resolve windows paths
+        file_name = file_name.replace('\\', '/')
+        
+        # Get the absolute path of the file, joining with the uploads directory
         uploads_dir = os.path.abspath("uploads")
-        # Get absolute path of the file
-        file_path = os.path.abspath(os.path.join(uploads_dir, file_name))
-
+        file_path = os.path.normpath(os.path.join(uploads_dir, file_name))
+        
+        # Check that the file exists
+        if not os.path.exists(file_path):
+            return web.Response(text="The requested file does not exist.\n", status=404)
+        
         # Ensure the file_path is within the uploads directory
         if not file_path.startswith(uploads_dir):
             return web.Response(text="Access denied.\n", status=403)
-
-        if not os.path.exists(file_path):
-            return web.Response(text="The requested file does not exist.\n", status=404)
 
         return web.FileResponse(file_path)
 

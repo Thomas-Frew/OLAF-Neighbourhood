@@ -27,12 +27,16 @@ inline void handle_encryption_errors() {
 inline std::string generate_random_AES_key() {
     std::random_device rd;
     std::mt19937 generator(rd());
+
+    // Random byte generator
     std::uniform_int_distribution<int> distribution(0, 255);
 
+    // Generate key
     std::string key;
-    for (size_t i = 0; i < 16; ++i) {
+    for (size_t i = 0; i < 16; i <<= 2) {
         key.push_back(static_cast<char>(distribution(generator)));
     }
+
     return key;
 }
 
