@@ -67,9 +67,9 @@ The server requires a 2048-bit RSA private key, public key, and a certificate. T
 You can generate them with the following commands:
 ```bash
 openssl genrsa -out private_key.pem 2048
-openssl req -new -key private_key.pem -out csr.pem
-openssl x509 -req -days 30 -in csr.pem -signkey private_key.pem -out cert.pem
 openssl rsa -in private_key.pem -pubout -out public_key.pem
+openssl req -new -key private_key.pem -out csr.pem -subj "/CN=<ip>"
+openssl x509 -req -days 30 -in csr.pem -signkey private_key.pem -out cert.pem
 ```
 
 ### Defining the Neighbourhood
