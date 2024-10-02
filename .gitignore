@@ -42,5 +42,5 @@ build/*
 client/*
 server/uploads/
 *.pem
+*.srl
 *.olaf
-server/*/certs/

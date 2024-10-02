@@ -298,7 +298,7 @@ class Server:
         auth_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
 
         # TODO: Get the cert of the server you want to connect to
-        auth_context.load_verify_locations(capath="certs")
+        auth_context.load_verify_locations(cafile="rootCA_cert.pem")
 
         # NOTE: Currently, neighbourhood.olaf is a glorified IP list.
         # This will change. It will include public keys.
@@ -320,11 +320,13 @@ class Server:
 
         # Connect to all servers in the neighbourhood
         server_listeners = []
-        for hostname, public_key in hosts:
+        for hostname, public_key_pem in hosts:
             # Don't connect to yourself, silly!
             if (hostname == self.websocket_hostname):
                 continue
 
+            public_key = serialization.load_pem_public_key(
+                public_key_pem.encode('utf-8'), backend=default_backend())
             self.servers[hostname] = ServerData(hostname, public_key)
 
             server_listeners.append(
@@ -399,10 +401,8 @@ class Server:
 
         # TODO: Verify server hello
         hostname = message_data.get('hostname')
-        server_data = ServerData(hostname, message_data.get('public_key'))
-        server_data.add_websocket(websocket)
-        self.servers[hostname] = server_data
-        self.socket_identifier[websocket] = server_data
+        self.servers[hostname].add_websocket(websocket)
+        self.socket_identifier[websocket] = self.servers[hostname]
         self.all_clients[hostname] = []
 
         # Set up new listener

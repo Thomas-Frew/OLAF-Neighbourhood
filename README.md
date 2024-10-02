@@ -62,14 +62,22 @@ In the server directory, the following is required:
 
 You can generate the client keys with the following commands:
 
-The server requires a 2048-bit RSA private key, public key, and a certificate. These are stored in `private_key.pem`, `public_key.pem` and `cert.pem` respectively.
+The server requires a 2048-bit RSA private key, public key, and a certificate. These are stored in `private_key.pem`, `public_key.pem` and `cert.pem` respectively. You'll also need to create a root CA certificate to verify all certificates of the neighbourhood, with certificate `rootCA_cert.pem`.
 
 You can generate them with the following commands:
+
+#### Root Certificate
+```bash
+openssl genrsa -out rootCA_key.pem 2048
+openssl req -x509 -new -nodes -days 30 -key rootCA_key.pem -out rootCA_cert.pem
+```
+
+#### Server Certificates
 ```bash
 openssl genrsa -out private_key.pem 2048
 openssl rsa -in private_key.pem -pubout -out public_key.pem
 openssl req -new -key private_key.pem -out csr.pem -subj "/CN=<ip>"
-openssl x509 -req -days 30 -in csr.pem -signkey private_key.pem -out cert.pem
+openssl x509 -req -days 30 -in csr.pem -CA rootCA_cert.pem -CAkey rootCA_key.pem -CAcreateserial -out cert.pem
 ```
 
 ### Defining the Neighbourhood
