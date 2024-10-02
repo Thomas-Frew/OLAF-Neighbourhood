@@ -213,13 +213,13 @@ class Server:
     async def handle_file_upload(self, request):
         """ Recieve a binary file from the user and store it. """
         file_data = await request.read()
+        
+        # Limit files to 5000kB
+        string_size =  sys.getsizeof(file_data.decode('utf-8').rstrip())
+        size_in_mb = string_size / 1000
 
-        # Limit files to 1 MB
-        string_size =  sys.getsizeof(re.sub(rb'\n+$', b'', file_data))       
-        size_in_mb = string_size / (1024*1024)
-
-        if (size_in_mb > 1):
-            return web.Response(text="File size cannot exceed 10 MB.\n", status=413)
+        if (size_in_mb > 500):
+            return web.Response(text="File size cannot exceed 500 kB.\n", status=413)
 
         file_name = "file_" + str(int(time())) + "_" + str(uuid.uuid4().hex)
         file_path = os.path.join("uploads", file_name)
