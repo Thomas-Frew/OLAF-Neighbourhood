@@ -1,5 +1,6 @@
 #include "web_connection.hpp"
 #include <curl/curl.h>
+#include <fstream>
 #include <iostream>
 #include <string>
 
@@ -44,13 +45,24 @@ auto WebConnection::read_file(std::string resource) -> void {
                 std::cerr << "An error occured with code: " << response_code
                           << std::endl;
             } else {
-                std::cout << "File content received: " << std::endl;
-                std::cout << response_string << std::endl;
-            }
-        }
+                size_t last_slash = resource.find_last_of('/');
+                std::string filename = resource.substr(last_slash + 1);
 
-        // Cleanup CURL
-        curl_easy_cleanup(curl);
+                std::ofstream file(filename);
+
+                if (file.is_open()) {
+                    file << response_string;
+                    file.close();
+                    std::cout << "File " << filename << " downloaded."
+                              << std::endl;
+                } else {
+                    std::cerr << "Error opening file for writing." << std::endl;
+                }
+            }
+
+            // Cleanup CURL
+            curl_easy_cleanup(curl);
+        }
     } else {
         std::cerr << "Failed to initialize CURL!" << std::endl;
     }
@@ -59,6 +71,7 @@ auto WebConnection::read_file(std::string resource) -> void {
 auto WebConnection::write_file(std::string filename) -> std::string {
     CURL *curl;
     CURLcode result_code;
+    long response_code = 0;
     std::string response;
 
     // Initialize CURL
@@ -79,7 +92,6 @@ auto WebConnection::write_file(std::string filename) -> std::string {
         if (file) {
             // Capture file data
             curl_easy_setopt(curl, CURLOPT_READDATA, file);
-            // curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
             // Capture file size
             fseek(file, 0L, SEEK_END);
@@ -92,6 +104,14 @@ auto WebConnection::write_file(std::string filename) -> std::string {
             if (result_code != CURLE_OK) {
                 std::cerr << "curl_easy_perform() failed: "
                           << curl_easy_strerror(result_code) << std::endl;
+            } else {
+                curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+                if (response_code >= 400) {
+                    std::cerr << "An error occured with code: " << response_code
+                              << std::endl;
+                } else {
+                    std::cout << std::endl << "File " << filename << " uploaded.";
+                }
             }
 
             fclose(file);
