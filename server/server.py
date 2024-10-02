@@ -483,8 +483,8 @@ class Server:
 
         finally:
             # Ensure cleanup on disconnect
-            logging.info(f"Disconnecting {
-                         self.socket_identifier[websocket].id}")
+            logging.info(f"Disconnecting" +
+                         f"{self.socket_identifier[websocket].id}")
             await disconnect_handler(websocket)
 
     async def handle_client_disconnect(self, websocket):
