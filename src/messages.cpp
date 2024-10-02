@@ -36,6 +36,9 @@ auto message_type_to_string(MessageType type) -> std::string_view {
     case MessageType::CLIENT_LIST: {
         return MessageTypeString::client_list;
     } break;
+    case MessageType::SIGNED_DATA: {
+        return MessageTypeString::signed_data;
+    } break;
     }
     throw std::runtime_error("Unknown message type");
 }
@@ -48,6 +51,7 @@ auto string_to_message_type(std::string_view type) -> MessageType {
         {MessageTypeString::client_list_request,
          MessageType::CLIENT_LIST_REQUEST},
         {MessageTypeString::client_list, MessageType::CLIENT_LIST},
+        {MessageTypeString::signed_data, MessageType::SIGNED_DATA},
     };
 
     return map.at(type);
@@ -64,6 +68,8 @@ constexpr auto is_signed(MessageType type) -> bool {
     case MessageType::PRIVATE_CHAT:
         [[fallthrough]];
     case MessageType::PUBLIC_CHAT:
+        [[fallthrough]];
+    case MessageType::SIGNED_DATA:
         return true;
     }
     throw std::runtime_error("Unknown message type");
@@ -146,18 +152,22 @@ auto PrivateChatData::from_json(const nlohmann::json &j)
 
 auto Message::to_json() const -> nlohmann::json {
     if (is_signed(this->type())) {
-        return nlohmann::json{{"type", message_type_to_string(this->type())},
-                              {"data", this->m_data->to_json()},
-                              {"signature", this->m_signature},
-                              {"counter", this->m_counter}};
+        return nlohmann::json{
+            {"type", message_type_to_string(MessageType::SIGNED_DATA)},
+            {"data", this->m_data->to_json()},
+            {"signature", this->m_signature},
+            {"counter", this->m_counter}};
     } else {
         return this->m_data->to_json();
     }
 }
 
 auto Message::from_json(const nlohmann::json &j) -> Message {
-    const auto type =
-        string_to_message_type(j.at("type").get<std::string_view>());
+    auto type = string_to_message_type(j.at("type").get<std::string_view>());
+    if (type == MessageType::SIGNED_DATA) {
+        type = string_to_message_type(
+            j.at("data").at("type").get<std::string_view>());
+    }
 
     std::unique_ptr<MessageData> data;
     switch (type) {
@@ -181,6 +191,10 @@ auto Message::from_json(const nlohmann::json &j) -> Message {
         static_assert(is_signed(MessageType::CLIENT_LIST) == false);
         data = ClientListData::from_json(j);
     } break;
+    case MessageType::SIGNED_DATA:
+        [[fallthrough]];
+    default:
+        throw std::runtime_error("Invalid message");
     }
 
     if (!is_signed(type)) {

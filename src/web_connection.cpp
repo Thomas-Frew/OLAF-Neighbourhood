@@ -4,7 +4,7 @@
 #include <string>
 
 static size_t write_callback(void *contents, size_t size, size_t nmemb,
-                            std::string *response) {
+                             std::string *response) {
     size_t totalSize = size * nmemb;
     response->append((char *)contents, totalSize);
     return totalSize;
@@ -41,7 +41,8 @@ auto WebConnection::read_file(std::string resource) -> void {
         } else {
             curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
             if (response_code >= 400) {
-                std::cerr << "An error occured with code: " << response_code << std::endl;
+                std::cerr << "An error occured with code: " << response_code
+                          << std::endl;
             } else {
                 std::cout << "File content received: " << std::endl;
                 std::cout << response_string << std::endl;

@@ -36,8 +36,8 @@ class ClientDataHandler {
 
     auto get_fingerprint(const std::string &username) -> std::string;
 
-    auto get_pubkey_from_fingerprint(const std::string &fingerprint)
-        -> std::string;
+    auto
+    get_pubkey_from_fingerprint(const std::string &fingerprint) -> std::string;
     auto get_pubkey_from_username(const std::string &username) -> std::string;
 
     auto check_counter(const std::string &fingerprint,
@@ -86,8 +86,8 @@ class ClientDataHandler {
      * Get client data from a username, in a const context. Assumes we have a
      * lock on the global mutex.
      */
-    auto client_of_username(const std::string &username) const
-        -> const ClientData &;
+    auto
+    client_of_username(const std::string &username) const -> const ClientData &;
 
     class ClientData {
       public:

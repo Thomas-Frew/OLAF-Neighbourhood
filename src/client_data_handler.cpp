@@ -4,9 +4,8 @@
 std::atomic<std::uint64_t> ClientDataHandler::ClientData::m_username_counter =
     0;
 
-auto ClientDataHandler::update_client_username(const std::string &old_name,
-                                               const std::string &new_name)
-    -> void {
+auto ClientDataHandler::update_client_username(
+    const std::string &old_name, const std::string &new_name) -> void {
     std::lock_guard guard{this->m_lock};
     if (this->m_username_map.contains(new_name)) {
         throw std::runtime_error{"Username already exists"};
