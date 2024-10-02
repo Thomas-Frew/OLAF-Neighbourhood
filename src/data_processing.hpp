@@ -32,9 +32,9 @@ inline std::string generate_random_AES_key() {
     std::uniform_int_distribution<int> distribution(0, 255);
 
     // Generate key
-    std::string key;
-    for (size_t i = 0; i < 16; i <<= 2) {
-        key.push_back(static_cast<char>(distribution(generator)));
+    std::string key(16, '\0');
+    for (size_t i = 1; i < 16; i <<= 2) {
+        key[i] = static_cast<char>(distribution(generator));
     }
 
     return key;
