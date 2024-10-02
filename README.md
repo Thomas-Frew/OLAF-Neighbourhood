@@ -47,7 +47,7 @@ openssl x509 -req -days 30 -in csr.pem -CA rootCA_cert.pem -CAkey rootCA_key.pem
 
 ### Defining the Neighbourhood
 
-The server requires a file containing all hostnames of servers in their neighbourhood (in the form `host:port`). These are stored in `neighbourhood.olaf` as plaintext, followed by the server's public key. Subsequent servers are separated by an empty line, including at the end of the file.
+The server requires a file containing all hostnames of servers in their neighbourhood (in the form `host:port`). These are stored in `neighbourhood.olaf` as plaintext, followed by the server's public key. Subsequent servers are separated by an empty line.
 
 ```
 localhost:1443
@@ -59,11 +59,11 @@ localhost:1444
 ...
 ```
 
-While this file can be constructed manually, it is easier to use commands. Navigate to `/server` place all self-signed server certificates in a directory called `certs`, and then run `c_rehash certs`.
+This file should be constructed manually and will be the same between all servers.
 
 ### Building the Server
 
-The Client is written in Python and, therefore, does not get built. All server source code is stored in `server`, with the entry point being `server.py`.
+The server is written in Python and, therefore, does not get built. All server source code is stored in `server`, with the entry point being `server.py`.
 
 ### Running the Server
 
@@ -129,3 +129,73 @@ The CLI chat app acts like a terminal, forever taking in commands and returning 
 ## Setting up multiple clients/servers
 
 You will likely want to run multiple clients/servers on the same machine for testing. To do this, you should set up a directory (e.g. subdirectories of the `server` and `client` directories) for each instance of a client/server, with its own keys and other required files. Then, simply run the client or server from inside these directories (e.g., call `../client` rather than `./client` from `./client/user1/`)
+
+## Exection Examples
+
+### Scenario 1: Client Talks to Self
+
+Let's establish that our certificates are in order.
+
+1. Set up one server, localhost:1443, with the correct certificates and keys.
+2. Set up one client with the correct certificates and keys.
+3. Run the server with `python3 server.py`.
+4. Run the client with `./client`.
+5. In the CLI, execute `online_list` and confirm that there is only 1 user.
+6. In the CLI, execute `public_chat Hello!` and confirm that you receive this message.
+
+### Scenario 2: Two Clients on the Same Server
+
+Let's check that clients can communicate on the same server.
+
+1. Set up one server, localhost:1443, with the correct certificates and keys.
+2. Set up two clients with the correct certificates and keys.
+3. Run the server with `python3 server.py`.
+4. Run the two clients with `./client`, from their respective directories.
+5. In each CLI, execute `online_list` and confirm that there are two users on localhost:1443.
+6. In each CLI, execute `public_chat Hello!` and confirm that both clients receive the message.
+7. In each CLI, execute `private_chat 1 [other_user]@localhost:1443 Private Hello!`, where [other_user] is the username of the other user. Confirm that ONLY the other user receives this message.
+
+### Scenario 3: Two Clients on Different Servers
+
+Let's check that clients can communicate on different servers.
+
+1. Set up two servers with the correct certificates and keys:
+    - localhost:1443
+    - localhost:1444
+2. Set up two clients with the correct certificates and keys.
+3. Run the servers from their respective directories with:
+    - `python3 server.py`
+    - `python3 server.py 1444 2444` 
+4. Run the two clients from their respective directories with:
+    - `./client`
+    - `./client localhost 1444 2444`
+5. In each CLI, execute `online_list` and confirm that there are two users on different_servers servers.
+6. In each CLI, execute `public_chat Hello!` and confirm that both clients receive the message.
+7. In each CLI, execute `private_chat 1 [other_user]@[other_server] Private Hello!`, where [other_user] is the username of the other user and [other_server] is the server hostname of the other user. Confirm that ONLY the other user receives this message.
+
+### Scenario 4: File Upload
+
+Let's check that file uploads work correctly.
+
+1. Set up one server, localhost:1443, with the correct certificates and keys.
+2. Set up one client with the correct certificates and keys.
+3. Run the server with `python3 server.py`.
+4. Run the client with `./client`.
+5. In the CLI, execute `upload [local_filename]`, where [local_filename] is any file on your machine (under 500kB).
+6. Note the [remote_filename] the server returns upon a successful upload.
+7. In the CLI, execute `download https://localhost:2443/[remote_filename]`.
+8. Confirm that the file gets downloaded and is correct.
+
+### Scenario 5: Username Database
+
+Let's check that we can change the aliases of users correctly.
+
+1. Set up one server, localhost:1443, with the correct certificates and keys.
+2. Set up two clients with the correct certificates and keys.
+3. Run the server with `python3 server.py`.
+4. Run the two clients with `./client`, from their respective directories.
+5. In each CLI, execute `online_list` and confirm that there are two users on localhost:1443.
+6. In one CLI, execute `rename [other_user] maddie`, to give the [other_user] the alias of "maddie".
+7. Then, execute `private_chat 1 maddie@localhost:1443 Hello Maddie!`. Confirm that ONLY the other user receives this message.
+8. In the other CLI, execute `rename [other_user] snow`, to give the [other_user] the alias of "snow".
+9. Then, execute `private_chat 1 maddie@localhost:1443 Hello Snow!`. Confirm that ONLY the other user receives this message.
