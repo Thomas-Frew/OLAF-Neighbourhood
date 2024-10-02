@@ -301,6 +301,9 @@ class Server:
                 else:
                     curr_key += f'{line}\n'
 
+            if curr_host != '':
+                hosts.append(curr_host, curr_key)
+
         # Connect to all servers in the neighbourhood
         server_listeners = []
         for hostname, public_key_pem in hosts:
