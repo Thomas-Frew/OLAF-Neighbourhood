@@ -12,7 +12,6 @@ import hashlib
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 import os
-import re
 import uuid
 from time import time
 from aiohttp import web
@@ -208,7 +207,9 @@ class Server:
                 return {
                     "type": MessageType.CLIENT_UPDATE.value,
                     "hostname": self.websocket_hostname,
-                    "clients": [client.public_key for client in self.clients.values()]
+                    "clients": [
+                        client.public_key for client in self.clients.values()
+                    ]
                 }
 
             case _:
@@ -217,13 +218,15 @@ class Server:
     async def handle_file_upload(self, request):
         """ Recieve a binary file from the user and store it. """
         file_data = await request.read()
-        
+
         # Limit files to 5000kB
         string_size = sys.getsizeof(file_data.decode('utf-8').rstrip())
         size_in_mb = string_size / 1000
 
         if (size_in_mb > 500):
-            return web.Response(text="File size cannot exceed 500 kB.\n", status=413)
+            return web.Response(
+                text="File size cannot exceed 500 kB.\n", status=413
+            )
 
         file_name = "file_" + str(int(time())) + "_" + str(uuid.uuid4().hex)
         file_path = os.path.join("uploads", file_name)
@@ -238,18 +241,20 @@ class Server:
     async def handle_file_retrieval(self, request):
         """ Return a stored file to the user. """
         file_name = request.match_info['file_name']
-        
+
         # Resolve windows paths
         file_name = file_name.replace('\\', '/')
-        
+
         # Get the absolute path of the file, joining with the uploads directory
         uploads_dir = os.path.abspath("uploads")
         file_path = os.path.normpath(os.path.join(uploads_dir, file_name))
-        
+
         # Check that the file exists
         if not os.path.exists(file_path):
-            return web.Response(text="The requested file does not exist.\n", status=404)
-        
+            return web.Response(
+                text="The requested file does not exist.\n", status=404
+            )
+
         # Ensure the file_path is within the uploads directory
         if not file_path.startswith(uploads_dir):
             return web.Response(text="Access denied.\n", status=403)
@@ -260,7 +265,11 @@ class Server:
         """ Begin the server and its core functions. """
 
         server_loop = websockets.serve(
-            self.handle_first, self.host, self.websocket_port, ssl=self.ssl_context)
+            self.handle_first,
+            self.host,
+            self.websocket_port,
+            ssl=self.ssl_context
+        )
 
         # Create listeners
         async with server_loop:
@@ -275,7 +284,11 @@ class Server:
             runner = web.AppRunner(self.file_server)
             await runner.setup()
             site = web.TCPSite(
-                runner, host=self.host, port=self.file_server_port, ssl_context=self.ssl_context)
+                runner,
+                host=self.host,
+                port=self.file_server_port,
+                ssl_context=self.ssl_context
+            )
             await site.start()
 
             # Wait until server is manually stopped
@@ -294,14 +307,10 @@ class Server:
         """ Connect to all servers in the neighbourhood. """
 
         # The auth context of the server you are connecting to
-        # TODO: Check if we should use anything non-default
         auth_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
 
-        # TODO: Get the cert of the server you want to connect to
         auth_context.load_verify_locations(cafile="rootCA_cert.pem")
 
-        # NOTE: Currently, neighbourhood.olaf is a glorified IP list.
-        # This will change. It will include public keys.
         with open('neighbourhood.olaf', 'r') as file:
             hosts = []
             lines = [line.strip() for line in file]
@@ -504,11 +513,18 @@ class Server:
         # Log disconnect event
         print(f"Server disconnected with hostname: {hostname}")
 
-    def verify_message(self, public_key, message_json, message_data, user_data):
+    def verify_message(
+            self,
+            public_key,
+            message_json,
+            message_data,
+            user_data
+    ):
         counter = int(message_json.get('counter'))
 
         if user_data.counter >= counter:
-            print("Warning! Counter for this message has not been incremeneted.")
+            print("Warning! Counter for this message"
+                  + "has not been incremeneted.")
         user_data.update_counter(counter)
 
         data_string = json.dumps(message_data, separators=(
