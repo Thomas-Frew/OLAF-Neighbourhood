@@ -130,7 +130,7 @@ The CLI chat app acts like a terminal, forever taking in commands and returning 
 
 You will likely want to run multiple clients/servers on the same machine for testing. To do this, you should set up a directory (e.g. subdirectories of the `server` and `client` directories) for each instance of a client/server, with its own keys and other required files. Then, simply run the client or server from inside these directories (e.g., call `../client` rather than `./client` from `./client/user1/`)
 
-## Exection Examples
+## Usage Examples
 
 ### Scenario 1: Client Talks to Self
 
