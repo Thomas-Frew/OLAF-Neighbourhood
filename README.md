@@ -153,7 +153,7 @@ Let's check that clients can communicate on the same server.
 4. Run the two clients with `./client`, from their respective directories.
 5. In each CLI, execute `online_list` and confirm that there are two users on localhost:1443.
 6. In each CLI, execute `public_chat Hello!` and confirm that both clients receive the message.
-7. In each CLI, execute `private_chat 1 [other_user]@localhost:1443 Private Hello!`, where [other_user] is the username of the other user. Confirm that ONLY the other user receives this message.
+7. In each CLI, execute `private_chat 1 [other_user] Private Hello!`, where [other_user] is the username of the other user. Confirm that ONLY the other user receives this message.
 
 ### Scenario 3: Two Clients on Different Servers
 
@@ -171,7 +171,7 @@ Let's check that clients can communicate on different servers.
     - `./client localhost 1444 2444`
 5. In each CLI, execute `online_list` and confirm that there are two users on different_servers servers.
 6. In each CLI, execute `public_chat Hello!` and confirm that both clients receive the message.
-7. In each CLI, execute `private_chat 1 [other_user]@[other_server] Private Hello!`, where [other_user] is the username of the other user and [other_server] is the server hostname of the other user. Confirm that ONLY the other user receives this message.
+7. In each CLI, execute `private_chat 1 [other_user] Private Hello!`, where [other_user] is the username of the other user and [other_server] is the server hostname of the other user. Confirm that ONLY the other user receives this message.
 
 ### Scenario 4: File Upload
 
@@ -196,6 +196,6 @@ Let's check that we can change the aliases of users correctly.
 4. Run the two clients with `./client`, from their respective directories.
 5. In each CLI, execute `online_list` and confirm that there are two users on localhost:1443.
 6. In one CLI, execute `rename [other_user] alice`, to give the [other_user] the alias of "alice".
-7. Then, execute `private_chat 1 alice@localhost:1443 Hello Alice!`. Confirm that ONLY the other user receives this message.
+7. Then, execute `private_chat 1 alice Hello Alice!`. Confirm that ONLY the other user receives this message.
 8. In the other CLI, execute `rename [other_user] bob`, to give the [other_user] the alias of "bob".
-9. Then, execute `private_chat 1 bob@localhost:1443 Hello Bob!`. Confirm that ONLY the other user receives this message.
+9. Then, execute `private_chat 1 bob Hello Bob!`. Confirm that ONLY the other user receives this message.
