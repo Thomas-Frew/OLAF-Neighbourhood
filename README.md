@@ -7,7 +7,7 @@ An implementation of the OLAF's Neighbourhood protocol.
 
 In the client directory, the following is required:
 
-- `cert.pem`: The certificate of the server the client is connecting to.
+- `rootCA_cert.pem`: The certificate of the root CA used by the neighbourhood of the server the client is connecting to.
 - `private_key.pem`: The private key of the client.
 - `public_key.pem`: The public key of the client.
 
