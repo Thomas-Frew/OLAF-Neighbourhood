@@ -159,7 +159,7 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
                          "in the neighbourhood\n";
             std::cout << "\tonline_list\tList the currently online users"
                       << std::endl;
-            std::cout << "\tchat [N] [user1@hostname1] ... [userN@hostnameN] "
+            std::cout << "\tchat [N] [user1] ... [userN] "
                          "[message]\tSend a message to certain users"
                       << std::endl;
             std::cout << "\trename [old_username] [new_username]\tRename an "
