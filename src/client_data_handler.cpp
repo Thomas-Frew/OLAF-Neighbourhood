@@ -1,7 +1,8 @@
 #include "client_data_handler.hpp"
 #include <utility>
 
-std::atomic<std::uint64_t> ClientDataHandler::ClientData::m_counter = 0;
+std::atomic<std::uint64_t> ClientDataHandler::ClientData::m_username_counter =
+    0;
 
 auto ClientDataHandler::update_client_username(const std::string &old_name,
                                                const std::string &new_name)
@@ -44,6 +45,13 @@ auto ClientDataHandler::register_client(const std::string &public_key)
     err_check(insert_check_2);
 
     return username;
+}
+
+auto ClientDataHandler::check_counter(const std::string &fingerprint,
+                                      std::uint64_t counter) -> bool {
+    std::lock_guard guard{this->m_lock};
+    auto &client = this->client_of_fingerprint(fingerprint);
+    return client.valid_counter(counter);
 }
 
 auto ClientDataHandler::get_username(const std::string &fingerprint)

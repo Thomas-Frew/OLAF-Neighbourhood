@@ -13,11 +13,11 @@ class Client {
     std::string &getPublicKey();
     std::string &getPrivateKey();
     std::string &getIdentifier();
-    uint32_t getCounter();
+    uint64_t getCounter();
 
   private:
     std::string m_public_key;
     std::string m_private_key;
     std::string m_identifier;
-    uint32_t m_counter;
+    uint64_t m_counter;
 };

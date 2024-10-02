@@ -40,6 +40,9 @@ class ClientDataHandler {
         -> std::string;
     auto get_pubkey_from_username(const std::string &username) -> std::string;
 
+    auto check_counter(const std::string &fingerprint,
+                       std::uint64_t counter) -> bool;
+
   private:
     ClientDataHandler() = default;
 
@@ -91,11 +94,12 @@ class ClientDataHandler {
         ClientData(std::string public_key, std::string username)
             : m_public_key(std::move(public_key)),
               m_fingerprint(sha256(this->m_public_key)),
-              m_username(std::move(username)) {}
+              m_username(std::move(username)), m_counter(0) {}
 
         ClientData(std::string public_key)
-            : ClientData(public_key,
-                         "unknown_user_" + std::to_string(m_counter++)) {}
+            : ClientData(public_key, "unknown_user_" +
+                                         std::to_string(m_username_counter++)) {
+        }
 
         auto update_username(std::string new_username) -> void {
             this->m_username = std::move(new_username);
@@ -113,13 +117,23 @@ class ClientDataHandler {
             return this->m_username;
         };
 
+        auto valid_counter(std::uint64_t counter) -> bool {
+            if (counter < this->m_counter) {
+                return false;
+            } else {
+                this->m_counter = counter + 1;
+                return true;
+            }
+        }
+
       private:
         std::string m_public_key;
         std::string m_fingerprint;
 
         // Users without a username will be assigned a number
-        static std::atomic<std::uint64_t> m_counter;
+        static std::atomic<std::uint64_t> m_username_counter;
         std::string m_username;
+        std::uint64_t m_counter;
 
       public:
         // We don't want to be making expensive copies
