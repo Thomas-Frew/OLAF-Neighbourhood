@@ -72,7 +72,6 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
 
         } else if (command == "private_chat" || command == "chat") {
 
-            std::string canonical_user;
             std::stringstream text_stream(text);
 
             uint16_t num_users;
@@ -85,13 +84,11 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
             std::string base_symm_key = generate_random_AES_key();
 
             for (uint16_t i = 0; i < num_users; i++) {
-                text_stream >> canonical_user >> std::ws;
+                std::string username;
+                text_stream >> username >> std::ws;
 
-                size_t pos = canonical_user.find("@");
-                std::string username = canonical_user.substr(0, pos);
-                std::string server = canonical_user.substr(pos + 1);
-
-                servers.push_back(server);
+                servers.push_back(
+                    client_data_handler.get_server_from_username(username));
 
                 std::string symm_key = encrypt_RSA(
                     base_symm_key,
