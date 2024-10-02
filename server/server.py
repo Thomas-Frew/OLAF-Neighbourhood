@@ -151,9 +151,7 @@ class Server:
                               MessageType.PRIVATE_CHAT]
 
         # Messge type where a server's message must be signed
-        self.server_signed = [MessageType.SERVER_HELLO,
-                              MessageType.CLIENT_UPDATE_REQUEST,
-                              MessageType.CLIENT_UPDATE]
+        self.server_signed = [MessageType.SERVER_HELLO]
 
         # File server
         self.file_server = web.Application()
@@ -179,41 +177,27 @@ class Server:
                 }
 
             case MessageType.CLIENT_LIST:
+                print(self.all_clients.items())
                 return {
                     "type": MessageType.CLIENT_LIST.value,
                     "servers": [
                         {
                             "address": address,
-                            "clients": [
-                                self.clients[client].public_key for client in client_list
-                            ],
+                            "clients": client_list,
                         } for address, client_list in self.all_clients.items()
                     ]
                 }
 
             case MessageType.CLIENT_UPDATE_REQUEST:
-                message_data = {"hostname": self.websocket_hostname}
-                base64_signature = DataProcessing.create_base64_signature(
-                    self.private_key, message_data, self.counter)
-
                 return {
                     "type": MessageType.CLIENT_UPDATE_REQUEST.value,
-                    "data": message_data,
-                    "signature": base64_signature,
-                    "counter": self.counter
                 }
 
             case MessageType.CLIENT_UPDATE:
-                message_data = {"hostname": self.websocket_hostname,
-                                "clients": list(self.clients.keys())}
-                base64_signature = DataProcessing.create_base64_signature(
-                    self.private_key, message_data, self.counter)
-
                 return {
                     "type": MessageType.CLIENT_UPDATE.value,
-                    "data": message_data,
-                    "signature": base64_signature,
-                    "counter": self.counter
+                    "hostname": self.websocket_hostname,
+                    "clients": [client.public_key for client in self.clients.values()]
                 }
 
             case _:
@@ -326,7 +310,9 @@ class Server:
                 continue
 
             public_key = serialization.load_pem_public_key(
-                public_key_pem.encode('utf-8'), backend=default_backend())
+                public_key_pem.encode(),
+                backend=default_backend()
+            )
             self.servers[hostname] = ServerData(hostname, public_key)
 
             server_listeners.append(
@@ -367,8 +353,8 @@ class Server:
                 websocket, self.handle_server, self.handle_server_disconnect
             ))
 
-        except Exception as e:
-            print(f"Could not reach server: {hostname} {e}")
+        except Exception:
+            print(f"Could not reach server: {hostname}")
 
     def read_message(self, message):
         # Decode message
@@ -511,24 +497,14 @@ class Server:
     async def handle_server(self, websocket, message):
         message_json, message_type, message_data = self.read_message(message)
 
-        # Verify signature for servers
-        if (message_type in self.server_signed):
-            self.verify_message(
-                self.socket_identifier[websocket].public_key,
-                message_json,
-                message_data
-            )
-
-        print(f"Recieved message from server of type {message_type}")
-
         # Handle message
         match message_type:
             case MessageType.PUBLIC_CHAT:
                 await self.handle_public_chat_server(message_json)
             case MessageType.CLIENT_UPDATE_REQUEST:
-                await self.handle_client_update_request(message_data)
+                await self.handle_client_update_request(websocket)
             case MessageType.CLIENT_UPDATE:
-                await self.handle_client_update(message_data)
+                await self.handle_client_update(message_json)
             case MessageType.PRIVATE_CHAT:
                 await self.handle_private_chat_server(message, message_data)
             case (MessageType.HELLO
@@ -543,26 +519,22 @@ class Server:
 
         await self.propagate_message_to_clients(message)
 
-    async def handle_client_update_request(self, message_data):
+    async def handle_client_update_request(self, websocket):
         """
         Handle CLIENT_UPDATE_REQUEST messages (respond with CLIENT_UPDATE).
         """
 
-        hostname = message_data.get('hostname')
         client_update_message = self.create_message(MessageType.CLIENT_UPDATE)
 
-        await self.servers[hostname].websocket.send(
-            json.dumps(client_update_message)
-        )
+        await websocket.send(json.dumps(client_update_message))
 
-    async def handle_client_update(self, message_data):
+    async def handle_client_update(self, message):
         """ Handle CLIENT_UPDATE message. """
 
-        hostname = message_data.get('hostname')
-        client_list = message_data.get('clients')
+        hostname = message.get('hostname')
+        client_list = message.get('clients')
 
         self.all_clients[hostname] = client_list
-        print(f"Updated client list to: {self.all_clients}")
 
     async def handle_private_chat_server(self, message, message_data):
         """ Handle PRIVATE_CHAT message sent from another server """
@@ -574,13 +546,10 @@ class Server:
 
         # Verify signatures for clients
         if (message_type in self.client_signed):
-            client_public_key = None
-            for client in self.clients.values():
-                if websocket == client.websocket:
-                    client_public_key = serialization.load_pem_public_key(
-                        client.public_key.encode(),
-                        backend=default_backend()
-                    )
+            client_public_key = serialization.load_pem_public_key(
+                self.socket_identifier[websocket].public_key.encode(),
+                backend=default_backend()
+            )
 
             self.verify_message(client_public_key, message_json, message_data)
 
@@ -589,6 +558,7 @@ class Server:
             case MessageType.PUBLIC_CHAT:
                 await self.handle_public_chat_client(message_json)
             case MessageType.CLIENT_LIST_REQUEST:
+                print("client list request")
                 await self.handle_client_list_request(websocket)
             case MessageType.PRIVATE_CHAT:
                 await self.handle_private_chat_client(message, message_data)
@@ -609,8 +579,11 @@ class Server:
     async def handle_client_list_request(self, websocket):
         """ Handle CLIENT_LIST_REQUEST messages (respond with CLIENT_LIST). """
 
+        print("creating message")
         client_list_message = self.create_message(MessageType.CLIENT_LIST)
+        print("sending message")
         await websocket.send(json.dumps(client_list_message))
+        print("message sent")
 
     async def handle_private_chat_client(self, message, message_data):
         """ Handle PRIVATE_CHAT message from client. """
