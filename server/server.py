@@ -215,7 +215,7 @@ class Server:
         file_data = await request.read()
         
         # Limit files to 5000kB
-        string_size =  sys.getsizeof(file_data.decode('utf-8').rstrip())
+        string_size = sys.getsizeof(file_data.decode('utf-8').rstrip())
         size_in_mb = string_size / 1000
 
         if (size_in_mb > 500):
