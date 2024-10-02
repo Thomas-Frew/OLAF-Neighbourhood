@@ -1,5 +1,6 @@
 import asyncio
 import websockets
+import logging
 import json
 import ssl
 import sys
@@ -32,7 +33,7 @@ class DataProcessing():
             )
             return True
         except Exception as e:
-            print(f"Verify error: {e}")
+            logging.error(f"Verify error: {e}")
             return False
 
     def sign_message(private_key, message):
@@ -213,7 +214,9 @@ class Server:
                 }
 
             case _:
-                print(f"Cannot create message of type {message_type}")
+                logging.critical(
+                    f"Cannot create message of type {message_type}"
+                )
 
     async def handle_file_upload(self, request):
         """ Recieve a binary file from the user and store it. """
@@ -276,7 +279,7 @@ class Server:
         # Create listeners
         async with server_loop:
             # Start the server loop
-            print(f"Server started on {self.websocket_hostname}")
+            logging.info(f"Server started on {self.websocket_hostname}")
             server_task = asyncio.create_task(self.wait_for_shutdown())
 
             # Establish neighborhood connections
@@ -303,7 +306,7 @@ class Server:
             await asyncio.Future()  # Run the server until manually stopped
 
         except asyncio.CancelledError:
-            print("Server is shutting down.")
+            logging.info("Server is shutting down.")
 
     async def connect_to_neighbourhood(self):
         """ Connect to all servers in the neighbourhood. """
@@ -348,7 +351,7 @@ class Server:
             server_listeners.append(
                 self.connect_to_server(hostname, auth_context))
         await asyncio.gather(*server_listeners)
-        print("Done connecting to neighbourhood!")
+        logging.info("Done connecting to neighbourhood!")
 
     async def connect_to_server(self, hostname, auth_context):
         """ Establish a connection with a remote server """
@@ -384,7 +387,7 @@ class Server:
             ))
 
         except Exception:
-            print(f"Could not reach server: {hostname}")
+            logging.warning(f"Could not reach server: {hostname}")
 
     def read_message(self, message):
         # Decode message
@@ -400,6 +403,7 @@ class Server:
         """ handle the first message sent by a new connection """
         try:
             message = await websocket.recv()
+            logging.debug(f"First message received: {message}")
             _, message_type, message_data = self.read_message(message)
 
             match message_type:
@@ -408,11 +412,11 @@ class Server:
                 case MessageType.SERVER_HELLO:
                     await self.handle_server_hello(websocket, message_data)
                 case _:
-                    print("Unestablished client sent message of type: " +
-                          f"{message_type}, closing connection")
+                    logging.error("Unestablished client sent message of "
+                                  + f"type: {message_type}, closing connection")
 
         except Exception as e:
-            print(f"Unestablished connection closed due to error: {e}")
+            logging.error(f"Unestablished connection closed due to error: {e}")
 
     async def handle_server_hello(self, websocket, message_data):
         """ Handle SERVER_HELLO messages. """
@@ -428,7 +432,7 @@ class Server:
             websocket, self.handle_server, self.handle_server_disconnect
         ))
 
-        print(f"Server connected with hostname: {hostname}")
+        logging.info(f"Server connected with hostname: {hostname}")
 
         await new_listener
 
@@ -455,7 +459,7 @@ class Server:
         await self.propagate_message_to_servers(client_update_message)
 
         # Log join event
-        print(f"Client connected with identifier: {client_data.id}")
+        logging.info(f"Client connected with identifier: {client_data.id}")
 
         await new_listener
 
@@ -464,21 +468,23 @@ class Server:
 
         try:
             async for message in websocket:
+                logging.debug(f"Message received: {message}")
                 await handler(websocket, message)
 
         except websockets.exceptions.ConnectionClosedOK:
             # Connection closed gracefully
-            print("Connection closed gracefully")
+            logging.info("Connection closed gracefully")
 
         except websockets.exceptions.ConnectionClosedError as e:
-            print(f"Connection closed due to error: {e}")
+            logging.error(f"Connection closed due to error: {e}")
 
         except Exception as e:
-            print(f"Internal error, closing connection: {e}")
+            logging.error(f"Internal error, closing connection: {e}")
 
         finally:
             # Ensure cleanup on disconnect
-            print(f"Disconnecting {self.socket_identifier[websocket].id}")
+            logging.info(f"Disconnecting {
+                         self.socket_identifier[websocket].id}")
             await disconnect_handler(websocket)
 
     async def handle_client_disconnect(self, websocket):
@@ -494,7 +500,7 @@ class Server:
             client_data.public_key)
 
         # Log disconnect event
-        print(f"Client disconnected with id: {client_data.id}")
+        logging.info(f"Client disconnected with id: {client_data.id}")
 
         # Notify other servers about the update
         client_update_message = self.create_message(
@@ -513,7 +519,7 @@ class Server:
         self.servers[hostname].websocket = None
 
         # Log disconnect event
-        print(f"Server disconnected with hostname: {hostname}")
+        logging.info(f"Server disconnected with hostname: {hostname}")
 
     def verify_message(
             self,
@@ -525,8 +531,8 @@ class Server:
         counter = int(message_json.get('counter'))
 
         if user_data.counter >= counter:
-            print("Warning! Counter for this message"
-                  + "has not been incremeneted.")
+            logging.warning("Warning! Counter for this message"
+                            + "has not been incremeneted.")
         user_data.update_counter(counter)
 
         data_string = json.dumps(message_data, separators=(
@@ -539,7 +545,8 @@ class Server:
             public_key, data_string, signature)
 
         if (not verify_result):
-            print("Warning! Signature could not be verified for message.")
+            logging.warning(
+                "Warning! Signature could not be verified for message.")
 
     async def handle_server(self, websocket, message):
         message_json, message_type, message_data = self.read_message(message)
@@ -557,9 +564,10 @@ class Server:
             case (MessageType.HELLO
                   | MessageType.SERVER_HELLO
                   | MessageType.CLIENT_LIST_REQUEST):
-                print(f"Erroneous message type from server: {message_type}")
+                logging.error(
+                    f"Erroneous message type from server: {message_type}")
             case _:
-                print(f"Message type not recognized: {message_type}")
+                logging.error(f"Message type not recognized: {message_type}")
 
     async def handle_public_chat_server(self, message):
         """ Handle PUBLIC_CHAT messages from servers. """
@@ -617,9 +625,10 @@ class Server:
                   | MessageType.SERVER_HELLO
                   | MessageType.CLIENT_UPDATE_REQUEST
                   | MessageType.CLIENT_UPDATE):
-                print(f"Erroneous message type from client: {message_type}")
+                logging.error(
+                    f"Erroneous message type from client: {message_type}")
             case _:
-                print(f"Message type not recognized: {message_type}")
+                logging.error(f"Message type not recognized: {message_type}")
 
     async def handle_public_chat_client(self, message):
         """ Handle PUBLIC_CHAT messages from clients. """
@@ -646,7 +655,8 @@ class Server:
             if server_data is not None:
                 await server_data.websocket.send(message)
             else:
-                print(f"Could not send message to unknown server {hostname}")
+                logging.error(
+                    f"Could not send message to unknown server {hostname}")
 
         await self.propagate_message_to_clients(message)
 
@@ -663,8 +673,8 @@ class Server:
                     case _:
                         await server_data.websocket.send(json.dumps(message))
             except Exception as e:
-                print("Failed to propagate to" +
-                      f"{server_data.websocket_hostname}: {e}")
+                logging.error("Failed to propagate to" +
+                              f"{server_data.websocket_hostname}: {e}")
 
     async def propagate_message_to_clients(self, message):
         """ Propagate a message to all connected clients of the server. """
@@ -677,7 +687,7 @@ class Server:
                     case _:
                         await client_data.websocket.send(json.dumps(message))
             except Exception as e:
-                print(f"Failed to propagate to {client_data.id}: {e}")
+                logging.error(f"Failed to propagate to {client_data.id}: {e}")
 
 
 if __name__ == "__main__":
@@ -691,6 +701,14 @@ if __name__ == "__main__":
 
     if len(sys.argv) > 2:
         file_server_port = int(sys.argv[2])
+
+    # Set up logging
+    logging.basicConfig(
+        filename='tmp/app.log',
+        filemode='a',
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        level=logging.DEBUG
+    )
 
     # Begin and run server
     server = Server("localhost", websocket_port, file_server_port)
