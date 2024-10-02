@@ -67,6 +67,9 @@ class DataProcessing():
 
 
 class MessageType(Enum):
+    # Wrapper
+    SIGNED_DATA = "signed_data"
+
     # Client-made messages
     HELLO = "hello"
     PUBLIC_CHAT = "public_chat"
@@ -173,12 +176,13 @@ class Server:
 
         match message_type:
             case MessageType.SERVER_HELLO:
-                message_data = {"hostname": self.websocket_hostname}
+                message_data = {"type": MessageType.SERVER_HELLO.value,
+                                "hostname": self.websocket_hostname}
                 base64_signature = DataProcessing.create_base64_signature(
                     self.private_key, message_data, self.counter)
 
                 return {
-                    "type": MessageType.SERVER_HELLO.value,
+                    "type": MessageType.SIGNED_DATA.value,
                     "data": message_data,
                     "signature": base64_signature,
                     "counter": self.counter
@@ -371,6 +375,8 @@ class Server:
         message_json = json.loads(message)
         message_type = MessageType(message_json.get('type'))
         message_data = message_json.get('data')
+        if message_type == MessageType.SIGNED_DATA:
+            message_type = MessageType(message_data.get('type'))
 
         return message_json, message_type, message_data
 

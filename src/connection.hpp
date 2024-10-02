@@ -17,7 +17,8 @@ class Connection {
     Connection operator=(Connection &) = delete;
     Connection operator=(Connection &&) = delete;
 
-    std::string read();
+    auto read() -> std::string;
+    auto get_host() -> std::string;
     void write(std::string_view message);
     void close();
 
@@ -28,6 +29,8 @@ class Connection {
     boost::beast::websocket::stream<
         boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>
         m_ws;
+
+    std::string m_host;
 
     enum class ConnState : uint8_t { CONNECTED, SHUTDOWN };
     ConnState m_state;
