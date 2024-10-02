@@ -4,9 +4,8 @@
 std::atomic<std::uint64_t> ClientDataHandler::ClientData::m_username_counter =
     0;
 
-auto ClientDataHandler::update_client_username(const std::string &old_name,
-                                               const std::string &new_name)
-    -> void {
+auto ClientDataHandler::update_client_username(
+    const std::string &old_name, const std::string &new_name) -> void {
     std::lock_guard guard{this->m_lock};
     if (this->m_username_map.contains(new_name)) {
         throw std::runtime_error{"Username already exists"};
@@ -23,10 +22,10 @@ auto ClientDataHandler::is_registered(const std::string &fingerprint) -> bool {
     return this->m_registered_users.contains(fingerprint);
 }
 
-auto ClientDataHandler::register_client(const std::string &public_key)
-    -> std::string {
+auto ClientDataHandler::register_client(
+    const std::string &public_key, const std::string &server) -> std::string {
     std::lock_guard guard{this->m_lock};
-    auto client = ClientData{public_key};
+    auto client = ClientData{public_key, server};
 
     auto err_check = [](bool inserted) -> void {
         if (!inserted) {
@@ -75,6 +74,12 @@ auto ClientDataHandler::get_pubkey_from_username(const std::string &username)
     -> std::string {
     std::lock_guard guard{this->m_lock};
     return this->client_of_username(username).public_key();
+}
+
+auto ClientDataHandler::get_server_from_username(const std::string &username)
+    -> std::string {
+    std::lock_guard guard{this->m_lock};
+    return this->client_of_username(username).server();
 }
 
 auto ClientDataHandler::client_of_username(const std::string &username)

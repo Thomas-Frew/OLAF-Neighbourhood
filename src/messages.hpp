@@ -13,6 +13,7 @@ enum class MessageType : uint8_t {
     PRIVATE_CHAT,
     CLIENT_LIST_REQUEST,
     CLIENT_LIST,
+    SIGNED_DATA,
 };
 
 namespace MessageTypeString {
@@ -22,6 +23,7 @@ static std::string_view public_chat = "public_chat"sv;
 static std::string_view private_chat = "chat"sv;
 static std::string_view client_list_request = "client_list_request"sv;
 static std::string_view client_list = "client_list"sv;
+static std::string_view signed_data = "signed_data"sv;
 }; // namespace MessageTypeString
 
 auto message_type_to_string(MessageType type) -> std::string_view;
@@ -43,8 +45,8 @@ class HelloData : public MessageData {
     explicit HelloData(std::string public_key)
         : m_public_key(std::move(public_key)) {}
 
-    static auto from_json(const nlohmann::json &j)
-        -> std::unique_ptr<HelloData>;
+    static auto
+    from_json(const nlohmann::json &j) -> std::unique_ptr<HelloData>;
 
   private:
     std::string m_public_key;
@@ -58,8 +60,8 @@ class PublicChatData : public MessageData {
     explicit PublicChatData(std::string fingerprint, std::string message)
         : m_sender(std::move(fingerprint)), m_message(std::move(message)) {}
 
-    static auto from_json(const nlohmann::json &j)
-        -> std::unique_ptr<PublicChatData>;
+    static auto
+    from_json(const nlohmann::json &j) -> std::unique_ptr<PublicChatData>;
 
     inline auto message() const noexcept -> std::string_view {
         return this->m_message;
@@ -96,8 +98,8 @@ class ClientListData : public MessageData {
         std::map<std::string, std::vector<std::string>> &&online_list)
         : m_online_list(std::move(online_list)) {}
 
-    static auto from_json(const nlohmann::json &j)
-        -> std::unique_ptr<ClientListData>;
+    static auto
+    from_json(const nlohmann::json &j) -> std::unique_ptr<ClientListData>;
 
     auto users() const noexcept
         -> const std::map<std::string, std::vector<std::string>> & {
@@ -126,8 +128,8 @@ class PrivateChatData : public MessageData {
           m_symm_keys(std::move(symm_keys)),
           m_participants(std::move(participants)), m_message(message) {}
 
-    static auto from_json(const nlohmann::json &j)
-        -> std::unique_ptr<PrivateChatData>;
+    static auto
+    from_json(const nlohmann::json &j) -> std::unique_ptr<PrivateChatData>;
 
     inline auto message() const noexcept -> std::string_view {
         return this->m_message;
