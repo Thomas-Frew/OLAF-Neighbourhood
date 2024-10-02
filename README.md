@@ -121,7 +121,7 @@ The CLI chat app acts like a terminal, forever taking in commands and returning 
 
 - `public_chat [message]`: Send a message to everyone in the neighbourhood.
 - `online_list`: List all online users in the neighbourhood.
-- `chat [N] [user1@hostname1] ... [userN@hostnameN]`: Send a private message to N users.
+- `chat [N] [user1] ... [userN]`: Send a private message to N users.
 - `rename [old_username] [new_username]`: Change a user's alias, making them easier to identify.
 - `upload [file_path]`: Upload a local file to the server. File uploads have a limit of 500kB.
 - `download https://[hostname]/[filename]`: Download a file from a server.
