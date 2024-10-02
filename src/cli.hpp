@@ -15,19 +15,18 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
     {
         auto message_data = std::make_unique<HelloData>(client.getPublicKey());
 
-        uint32_t counter = client.getCounter();
+        auto counter = client.getCounter();
 
-        std::string data_string =
+        auto data_string =
             message_data->to_json().dump() + std::to_string(counter);
-        std::string signature =
-            sign_message(client.getPrivateKey(), data_string);
+        auto signature = sign_message(client.getPrivateKey(), data_string);
 
         Message message{MessageType::HELLO, std::move(message_data), signature,
                         counter};
         connection.write(message.to_json().dump());
     }
 
-    ClientDataHandler &client_data_handler = ClientDataHandler::get_instance();
+    auto &client_data_handler = ClientDataHandler::get_instance();
     client_data_handler.set_private_key(client.getPrivateKey());
 
     // Register self
@@ -63,11 +62,10 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
             auto message_data =
                 std::make_unique<PublicChatData>(client.getIdentifier(), text);
 
-            uint32_t counter = client.getCounter();
-            std::string data_string =
+            auto counter = client.getCounter();
+            auto data_string =
                 message_data->to_json().dump() + std::to_string(counter);
-            std::string signature =
-                sign_message(client.getPrivateKey(), data_string);
+            auto signature = sign_message(client.getPrivateKey(), data_string);
 
             Message message{MessageType::PUBLIC_CHAT, std::move(message_data),
                             signature, counter};

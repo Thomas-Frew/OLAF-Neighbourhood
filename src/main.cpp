@@ -13,18 +13,25 @@ int main(int argc, char **argv) {
     std::string host = "localhost";
     std::string ws_port = "1443";
     std::string web_port = "2443";
-    std::string public_key = load_key("client.pkey");
-    std::string private_key = load_key("client.key");
+    std::string public_key = load_key("public_key.pem");
+    std::string private_key = load_key("private_key.pem");
 
     // Port is customisable
     if (argc > 1) {
-        ws_port = argv[1];
+        host = argv[1];
     }
     if (argc > 2) {
-        web_port = argv[2];
+        ws_port = argv[2];
     }
     if (argc > 3) {
-        std::cerr << "Usage: client <port>?" << std::endl;
+        web_port = argv[3];
+    }
+    if (argc > 4) {
+        std::cerr << "Usage: client <host>? <port>? <file_hosting_port>?"
+                  << std::endl;
+        std::cerr << "Default behaviour: wss:://localhost:1443/, "
+                     "https://localhost:2443/"
+                  << std::endl;
         return EXIT_FAILURE;
     }
 

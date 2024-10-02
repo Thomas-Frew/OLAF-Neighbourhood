@@ -82,10 +82,18 @@ class MessageType(Enum):
 
 
 class ServerData:
-    def __init__(self, websocket, hostname):
-        self.websocket = websocket
+    def __init__(self, hostname, public_key):
         self.websocket_hostname = hostname
         self.id = hostname
+        self.public_key = public_key
+        self.websocket = None
+        self.counter = -1
+
+    def add_websocket(self, websocket):
+        self.websocket = websocket
+
+    def update_counter(self, counter):
+        self.counter = counter
 
 
 class ClientData:
@@ -94,6 +102,10 @@ class ClientData:
         self.public_key = public_key
         self.id = DataProcessing.base64_encode(
             DataProcessing.sha256(public_key).encode())
+        self.counter = -1
+
+    def update_counter(self, counter):
+        self.counter = counter
 
 
 class Server:
@@ -130,15 +142,15 @@ class Server:
 
         # Load certificate chain
         self.ssl_context.load_cert_chain(
-            certfile="server.cert", keyfile="server.key")
+            certfile="cert.pem", keyfile="private_key.pem")
 
         # Load private key
-        with open("server.key", "rb") as key_file:
+        with open("private_key.pem", "rb") as key_file:
             self.private_key = serialization.load_pem_private_key(
                 key_file.read(), password=None, backend=default_backend())
 
         # Load public key
-        with open("server.pkey", "rb") as key_file:
+        with open("public_key.pem", "rb") as key_file:
             self.public_key = serialization.load_pem_public_key(
                 key_file.read(), backend=default_backend())
 
@@ -147,9 +159,7 @@ class Server:
                               MessageType.PRIVATE_CHAT]
 
         # Messge type where a server's message must be signed
-        self.server_signed = [MessageType.SERVER_HELLO,
-                              MessageType.CLIENT_UPDATE_REQUEST,
-                              MessageType.CLIENT_UPDATE]
+        self.server_signed = [MessageType.SERVER_HELLO]
 
         # File server
         self.file_server = web.Application()
@@ -180,36 +190,21 @@ class Server:
                     "servers": [
                         {
                             "address": address,
-                            "clients": [
-                                self.clients[client].public_key for client in client_list
-                            ],
+                            "clients": client_list,
                         } for address, client_list in self.all_clients.items()
                     ]
                 }
 
             case MessageType.CLIENT_UPDATE_REQUEST:
-                message_data = {"hostname": self.websocket_hostname}
-                base64_signature = DataProcessing.create_base64_signature(
-                    self.private_key, message_data, self.counter)
-
                 return {
                     "type": MessageType.CLIENT_UPDATE_REQUEST.value,
-                    "data": message_data,
-                    "signature": base64_signature,
-                    "counter": self.counter
                 }
 
             case MessageType.CLIENT_UPDATE:
-                message_data = {"hostname": self.websocket_hostname,
-                                "clients": list(self.clients.keys())}
-                base64_signature = DataProcessing.create_base64_signature(
-                    self.private_key, message_data, self.counter)
-
                 return {
                     "type": MessageType.CLIENT_UPDATE.value,
-                    "data": message_data,
-                    "signature": base64_signature,
-                    "counter": self.counter
+                    "hostname": self.websocket_hostname,
+                    "clients": [client.public_key for client in self.clients.values()]
                 }
 
             case _:
@@ -296,20 +291,41 @@ class Server:
         auth_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
 
         # TODO: Get the cert of the server you want to connect to
-        auth_context.load_verify_locations(cafile="server.cert")
+        auth_context.load_verify_locations(cafile="rootCA_cert.pem")
 
         # NOTE: Currently, neighbourhood.olaf is a glorified IP list.
         # This will change. It will include public keys.
         with open('neighbourhood.olaf', 'r') as file:
-            # Ensure no leading/trailing whitespace
-            hostnames = [line.strip() for line in file]
+            hosts = []
+            lines = [line.strip() for line in file]
+            curr_host = ''
+            curr_key = ''
+
+            for line in lines:
+                if line == '':
+                    hosts.append((curr_host, curr_key))
+                    curr_host = ''
+                    curr_key = ''
+                elif curr_host == '':
+                    curr_host = line
+                else:
+                    curr_key += f'{line}\n'
+
+            if curr_host != '':
+                hosts.append((curr_host, curr_key))
 
         # Connect to all servers in the neighbourhood
         server_listeners = []
-        for hostname in hostnames:
+        for hostname, public_key_pem in hosts:
             # Don't connect to yourself, silly!
             if (hostname == self.websocket_hostname):
                 continue
+
+            public_key = serialization.load_pem_public_key(
+                public_key_pem.encode(),
+                backend=default_backend()
+            )
+            self.servers[hostname] = ServerData(hostname, public_key)
 
             server_listeners.append(
                 self.connect_to_server(hostname, auth_context))
@@ -329,8 +345,8 @@ class Server:
                 f"wss://{hostname}/", ssl=auth_context
             )
 
-            server_data = ServerData(websocket, hostname)
-            self.servers[hostname] = server_data
+            self.servers[hostname].add_websocket(websocket)
+            server_data = self.servers[hostname]
             self.socket_identifier[websocket] = server_data
             self.all_clients[hostname] = []
 
@@ -349,8 +365,8 @@ class Server:
                 websocket, self.handle_server, self.handle_server_disconnect
             ))
 
-        except Exception as e:
-            print(f"Could not reach server: {hostname} {e}")
+        except Exception:
+            print(f"Could not reach server: {hostname}")
 
     def read_message(self, message):
         # Decode message
@@ -380,10 +396,11 @@ class Server:
 
     async def handle_server_hello(self, websocket, message_data):
         """ Handle SERVER_HELLO messages. """
+
+        # TODO: Verify server hello
         hostname = message_data.get('hostname')
-        server_data = ServerData(websocket, hostname)
-        self.servers[hostname] = server_data
-        self.socket_identifier[websocket] = server_data
+        self.servers[hostname].add_websocket(websocket)
+        self.socket_identifier[websocket] = self.servers[hostname]
         self.all_clients[hostname] = []
 
         # Set up new listener
@@ -406,7 +423,8 @@ class Server:
         client_data = ClientData(websocket, public_key)
         self.clients[client_data.id] = client_data
         self.socket_identifier[websocket] = client_data
-        self.all_clients[self.websocket_hostname].append(client_data.id)
+        self.all_clients[self.websocket_hostname].append(
+            client_data.public_key)
 
         # Set up new listener
         new_listener = asyncio.create_task(self.listener(
@@ -452,7 +470,8 @@ class Server:
 
         # Remove the client
         del self.clients[client_data.id]
-        self.all_clients[self.websocket_hostname].remove(client_data.id)
+        self.all_clients[self.websocket_hostname].remove(
+            client_data.public_key)
 
         # Log disconnect event
         print(f"Client disconnected with id: {client_data.id}")
@@ -469,17 +488,22 @@ class Server:
         # Find the server by websocket
         hostname = self.socket_identifier[websocket].id
         del self.socket_identifier[websocket]
-
-        # Remove the server
-        del self.servers[hostname]
         del self.all_clients[hostname]
+
+        self.servers[hostname].websocket = None
 
         # Log disconnect event
         print(f"Server disconnected with hostname: {hostname}")
 
-    def verify_message(self, public_key, message_json, message_data):
+    def verify_message(self, public_key, message_json, message_data, user_data):
+        counter = int(message_json.get('counter'))
+
+        if user_data.counter >= counter:
+            print("Warning! Counter for this message has not been incremeneted.")
+        user_data.update_counter(counter)
+
         data_string = json.dumps(message_data, separators=(
-            ',', ':')) + str(message_json.get('counter'))
+            ',', ':')) + str(counter)
 
         base64_signature = message_json.get('signature')
         signature = DataProcessing.base64_decode(base64_signature)
@@ -493,20 +517,14 @@ class Server:
     async def handle_server(self, websocket, message):
         message_json, message_type, message_data = self.read_message(message)
 
-        # Verify signature for servers
-        if (message_type in self.server_signed):
-            self.verify_message(self.public_key, message_json, message_data)
-
-        print(f"Recieved message from server of type {message_type}")
-
         # Handle message
         match message_type:
             case MessageType.PUBLIC_CHAT:
                 await self.handle_public_chat_server(message_json)
             case MessageType.CLIENT_UPDATE_REQUEST:
-                await self.handle_client_update_request(message_data)
+                await self.handle_client_update_request(websocket)
             case MessageType.CLIENT_UPDATE:
-                await self.handle_client_update(message_data)
+                await self.handle_client_update(message_json)
             case MessageType.PRIVATE_CHAT:
                 await self.handle_private_chat_server(message, message_data)
             case (MessageType.HELLO
@@ -521,26 +539,22 @@ class Server:
 
         await self.propagate_message_to_clients(message)
 
-    async def handle_client_update_request(self, message_data):
+    async def handle_client_update_request(self, websocket):
         """
         Handle CLIENT_UPDATE_REQUEST messages (respond with CLIENT_UPDATE).
         """
 
-        hostname = message_data.get('hostname')
         client_update_message = self.create_message(MessageType.CLIENT_UPDATE)
 
-        await self.servers[hostname].websocket.send(
-            json.dumps(client_update_message)
-        )
+        await websocket.send(json.dumps(client_update_message))
 
-    async def handle_client_update(self, message_data):
+    async def handle_client_update(self, message):
         """ Handle CLIENT_UPDATE message. """
 
-        hostname = message_data.get('hostname')
-        client_list = message_data.get('clients')
+        hostname = message.get('hostname')
+        client_list = message.get('clients')
 
         self.all_clients[hostname] = client_list
-        print(f"Updated client list to: {self.all_clients}")
 
     async def handle_private_chat_server(self, message, message_data):
         """ Handle PRIVATE_CHAT message sent from another server """
@@ -552,15 +566,17 @@ class Server:
 
         # Verify signatures for clients
         if (message_type in self.client_signed):
-            client_public_key = None
-            for client in self.clients.values():
-                if websocket == client.websocket:
-                    client_public_key = serialization.load_pem_public_key(
-                        client.public_key.encode(),
-                        backend=default_backend()
-                    )
+            client_public_key = serialization.load_pem_public_key(
+                self.socket_identifier[websocket].public_key.encode(),
+                backend=default_backend()
+            )
 
-            self.verify_message(client_public_key, message_json, message_data)
+            self.verify_message(
+                client_public_key,
+                message_json,
+                message_data,
+                self.socket_identifier[websocket]
+            )
 
         # Handle message
         match message_type:
@@ -611,6 +627,8 @@ class Server:
         """ Propagate a message to all servers in the neighbourhood. """
 
         for server_data in self.servers.values():
+            if server_data.websocket is None:
+                continue
             try:
                 match message:
                     case str(s):

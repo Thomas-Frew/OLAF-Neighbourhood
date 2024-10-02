@@ -151,6 +151,10 @@ auto MessageHandler::verify_message(const Message &message,
         message.data().to_json().dump() + std::to_string(message.counter());
 
     try {
+        if (!this->m_client_data_handler.check_counter(fingerprint,
+                                                       message.counter())) {
+            return VerificationStatus::InvalidSignature;
+        }
         const auto &public_key =
             this->m_client_data_handler.get_pubkey_from_fingerprint(
                 fingerprint);

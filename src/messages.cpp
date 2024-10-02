@@ -188,5 +188,5 @@ auto Message::from_json(const nlohmann::json &j) -> Message {
     }
 
     return Message{type, std::move(data), j.at("signature").get<std::string>(),
-                   j.at("counter").get<uint32_t>()};
+                   j.at("counter").get<uint64_t>()};
 }
