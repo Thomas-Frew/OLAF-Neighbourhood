@@ -41,7 +41,7 @@ auto WebConnection::read_file(std::string resource) -> void {
         } else {
             curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
             if (response_code >= 400) {
-                std::cerr << "An error occured wit hcode: " << response_code << std::endl;
+                std::cerr << "An error occured with code: " << response_code << std::endl;
             } else {
                 std::cout << "File content received: " << std::endl;
                 std::cout << response_string << std::endl;
