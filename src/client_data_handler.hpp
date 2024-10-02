@@ -94,7 +94,7 @@ class ClientDataHandler {
         ClientData(std::string public_key, std::string username)
             : m_public_key(std::move(public_key)),
               m_fingerprint(sha256(this->m_public_key)),
-              m_username(std::move(username)) {}
+              m_username(std::move(username)), m_counter(0) {}
 
         ClientData(std::string public_key)
             : ClientData(public_key, "unknown_user_" +
@@ -118,10 +118,10 @@ class ClientDataHandler {
         };
 
         auto valid_counter(std::uint64_t counter) -> bool {
-            if (counter <= this->m_counter) {
+            if (counter < this->m_counter) {
                 return false;
             } else {
-                this->m_counter = counter;
+                this->m_counter = counter + 1;
                 return true;
             }
         }
