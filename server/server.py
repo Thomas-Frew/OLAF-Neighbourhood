@@ -177,7 +177,6 @@ class Server:
                 }
 
             case MessageType.CLIENT_LIST:
-                print(self.all_clients.items())
                 return {
                     "type": MessageType.CLIENT_LIST.value,
                     "servers": [
@@ -411,7 +410,8 @@ class Server:
         client_data = ClientData(websocket, public_key)
         self.clients[client_data.id] = client_data
         self.socket_identifier[websocket] = client_data
-        self.all_clients[self.websocket_hostname].append(client_data.id)
+        self.all_clients[self.websocket_hostname].append(
+            client_data.public_key)
 
         # Set up new listener
         new_listener = asyncio.create_task(self.listener(
