@@ -86,9 +86,13 @@ class ServerData:
         self.id = hostname
         self.public_key = public_key
         self.websocket = None
+        self.counter = -1
 
     def add_websocket(self, websocket):
         self.websocket = websocket
+
+    def update_counter(self, counter):
+        self.counter = counter
 
 
 class ClientData:
@@ -97,6 +101,10 @@ class ClientData:
         self.public_key = public_key
         self.id = DataProcessing.base64_encode(
             DataProcessing.sha256(public_key).encode())
+        self.counter = -1
+
+    def update_counter(self, counter):
+        self.counter = counter
 
 
 class Server:
@@ -481,9 +489,15 @@ class Server:
         # Log disconnect event
         print(f"Server disconnected with hostname: {hostname}")
 
-    def verify_message(self, public_key, message_json, message_data):
+    def verify_message(self, public_key, message_json, message_data, user_data):
+        counter = int(message_json.get('counter'))
+
+        if user_data.counter >= counter:
+            print("Warning! Counter for this message has not been incremeneted.")
+        user_data.update_counter(counter)
+
         data_string = json.dumps(message_data, separators=(
-            ',', ':')) + str(message_json.get('counter'))
+            ',', ':')) + str(counter)
 
         base64_signature = message_json.get('signature')
         signature = DataProcessing.base64_decode(base64_signature)
@@ -551,7 +565,12 @@ class Server:
                 backend=default_backend()
             )
 
-            self.verify_message(client_public_key, message_json, message_data)
+            self.verify_message(
+                client_public_key,
+                message_json,
+                message_data,
+                self.socket_identifier[websocket]
+            )
 
         # Handle message
         match message_type:

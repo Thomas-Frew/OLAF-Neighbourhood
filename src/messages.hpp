@@ -164,10 +164,10 @@ class Message {
     inline auto data() -> MessageData & { return *m_data; }
 
     inline auto signature() const -> const std::string & { return m_signature; }
-    inline auto counter() const -> uint32_t { return m_counter; }
+    inline auto counter() const -> uint64_t { return m_counter; }
 
     explicit Message(MessageType type, std::unique_ptr<MessageData> &&data,
-                     std::string signature, uint32_t counter)
+                     std::string signature, uint64_t counter)
         : m_type(type), m_data(std::move(data)), m_signature(signature),
           m_counter(counter) {}
 
@@ -178,5 +178,5 @@ class Message {
     MessageType m_type;
     std::unique_ptr<MessageData> m_data;
     std::string m_signature;
-    uint32_t m_counter;
+    uint64_t m_counter;
 };
