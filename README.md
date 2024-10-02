@@ -84,7 +84,7 @@ openssl x509 -req -days 30 -in csr.pem -CA rootCA_cert.pem -CAkey rootCA_key.pem
 
 ### Defining the Neighbourhood
 
-The server requires a file containing all hostnames of servers in their neighbourhood (in the form `host:port`). These are stored in `neighbourhood.olaf` as plaintext, followed by the server's public key. Subsequent servers are separated by an empty line. The file must be terminated by an empty line.
+The server requires a file containing all hostnames of servers in their neighbourhood (in the form `host:port`). These are stored in `neighbourhood.olaf` as plaintext, followed by the server's public key. Subsequent servers are separated by an empty line.
 
 ```
 localhost:1443
