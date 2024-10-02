@@ -176,7 +176,8 @@ class Server:
 
         match message_type:
             case MessageType.SERVER_HELLO:
-                message_data = {"hostname": self.websocket_hostname}
+                message_data = {"type": MessageType.SERVER_HELLO.value,
+                                "hostname": self.websocket_hostname}
                 base64_signature = DataProcessing.create_base64_signature(
                     self.private_key, message_data, self.counter)
 
