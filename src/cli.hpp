@@ -31,10 +31,8 @@ inline void cli(Connection &&connection, WebConnection &&web_connection,
 
     // Register self
     {
-        auto default_username =
-            client_data_handler.register_client(client.getPublicKey());
-
-        std::cout << "Registered self as: " << default_username << std::endl;
+        auto default_username = client_data_handler.register_client(
+            client.getPublicKey(), connection.get_host());
 
         using namespace std::literals;
         client_data_handler.update_client_username(default_username, "self"s);

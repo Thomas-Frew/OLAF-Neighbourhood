@@ -53,6 +53,7 @@ Connection::Connection(std::string host, std::string_view port)
     // Host HTTP header during the WebSocket handshake.
     // See https://tools.ietf.org/html/rfc7230#section-5.4
     host += ':' + ep.port();
+    this->m_host = host;
 
     // Perform ssl handshake
     this->m_ws.next_layer().handshake(ssl::stream_base::client);
@@ -75,6 +76,8 @@ auto Connection::read() -> std::string {
     this->m_ws.read(buffer);
     return beast::buffers_to_string(buffer.data());
 }
+
+auto Connection::get_host() -> std::string { return this->m_host; }
 
 auto Connection::write(std::string_view message) -> void {
     this->m_ws.write(net::buffer(message));

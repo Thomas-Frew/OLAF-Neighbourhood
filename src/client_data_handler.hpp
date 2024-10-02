@@ -22,7 +22,8 @@ class ClientDataHandler {
 
     auto is_registered(const std::string &fingerprint) -> bool;
 
-    auto register_client(const std::string &public_key) -> std::string;
+    auto register_client(const std::string &public_key,
+                         const std::string &server) -> std::string;
 
     auto set_private_key(std::string key) -> void {
         this->m_private_key = std::move(key);
@@ -39,6 +40,8 @@ class ClientDataHandler {
     auto
     get_pubkey_from_fingerprint(const std::string &fingerprint) -> std::string;
     auto get_pubkey_from_username(const std::string &username) -> std::string;
+
+    auto get_server_from_username(const std::string &username) -> std::string;
 
     auto check_counter(const std::string &fingerprint,
                        std::uint64_t counter) -> bool;
@@ -91,15 +94,17 @@ class ClientDataHandler {
 
     class ClientData {
       public:
-        ClientData(std::string public_key, std::string username)
+        ClientData(std::string public_key, std::string username,
+                   std::string server)
             : m_public_key(std::move(public_key)),
               m_fingerprint(sha256(this->m_public_key)),
-              m_username(std::move(username)), m_counter(0) {}
+              m_username(std::move(username)), m_counter(0),
+              m_server(std::move(server)) {}
 
-        ClientData(std::string public_key)
-            : ClientData(public_key, "unknown_user_" +
-                                         std::to_string(m_username_counter++)) {
-        }
+        ClientData(std::string public_key, std::string server)
+            : ClientData(public_key,
+                         "unknown_user_" + std::to_string(m_username_counter++),
+                         server) {}
 
         auto update_username(std::string new_username) -> void {
             this->m_username = std::move(new_username);
@@ -117,6 +122,8 @@ class ClientDataHandler {
             return this->m_username;
         };
 
+        auto server() const -> const std::string & { return this->m_server; }
+
         auto valid_counter(std::uint64_t counter) -> bool {
             if (counter < this->m_counter) {
                 return false;
@@ -133,6 +140,7 @@ class ClientDataHandler {
         // Users without a username will be assigned a number
         static std::atomic<std::uint64_t> m_username_counter;
         std::string m_username;
+        std::string m_server;
         std::uint64_t m_counter;
 
       public:
