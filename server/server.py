@@ -242,8 +242,6 @@ class Server:
         uploads_dir = os.path.abspath("uploads")
         file_path = os.path.normpath(os.path.join(uploads_dir, file_name))
         
-        print(file_path)
-        
         # Check that the file exists
         if not os.path.exists(file_path):
             return web.Response(text="The requested file does not exist.\n", status=404)
