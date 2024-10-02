@@ -558,7 +558,6 @@ class Server:
             case MessageType.PUBLIC_CHAT:
                 await self.handle_public_chat_client(message_json)
             case MessageType.CLIENT_LIST_REQUEST:
-                print("client list request")
                 await self.handle_client_list_request(websocket)
             case MessageType.PRIVATE_CHAT:
                 await self.handle_private_chat_client(message, message_data)
@@ -579,11 +578,8 @@ class Server:
     async def handle_client_list_request(self, websocket):
         """ Handle CLIENT_LIST_REQUEST messages (respond with CLIENT_LIST). """
 
-        print("creating message")
         client_list_message = self.create_message(MessageType.CLIENT_LIST)
-        print("sending message")
         await websocket.send(json.dumps(client_list_message))
-        print("message sent")
 
     async def handle_private_chat_client(self, message, message_data):
         """ Handle PRIVATE_CHAT message from client. """
