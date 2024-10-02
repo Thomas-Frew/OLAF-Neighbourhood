@@ -309,6 +309,9 @@ class Server:
                 else:
                     curr_key += f'{line}\n'
 
+            if curr_host != '':
+                hosts.append((curr_host, curr_key))
+
         # Connect to all servers in the neighbourhood
         server_listeners = []
         for hostname, public_key_pem in hosts:
@@ -465,7 +468,8 @@ class Server:
 
         # Remove the client
         del self.clients[client_data.id]
-        self.all_clients[self.websocket_hostname].remove(client_data.id)
+        self.all_clients[self.websocket_hostname].remove(
+            client_data.public_key)
 
         # Log disconnect event
         print(f"Client disconnected with id: {client_data.id}")

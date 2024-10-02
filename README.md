@@ -7,7 +7,7 @@ An implementation of the OLAF's Neighbourhood protocol.
 
 In the client directory, the following is required:
 
-- `cert.pem`: The certificate of the server the client is connecting to.
+- `rootCA_cert.pem`: The certificate of the root CA used by the neighbourhood of the server the client is connecting to.
 - `private_key.pem`: The private key of the client.
 - `public_key.pem`: The public key of the client.
 
@@ -30,9 +30,11 @@ The client will be built as `/client/client`.
 
 ### Running the Client
 
-The client is run within the `client` directory as `./client [port]?
+The client is run within the `client` directory as `./client [host]? [port]? [file_hosting_port]?
 
-- `[ip]`: An optional argument containing the port of the server. Defaults to 1443.
+- `[host]`: An optional argument containing the ip of the server. Defaults to localhost.
+- `[port]`: An optional argument containing the port of the server. Defaults to 1443.
+- `[file_hosting_port]`: An optional argument containing the port of the server used for file transfer. Defaults to 2443.
 
 ### Initialisation Behaviour
 
@@ -82,7 +84,7 @@ openssl x509 -req -days 30 -in csr.pem -CA rootCA_cert.pem -CAkey rootCA_key.pem
 
 ### Defining the Neighbourhood
 
-The server requires a file containing all hostnames of servers in their neighbourhood (in the form `host:port`). These are stored in `neighbourhood.olaf` as plaintext, followed by the server's public key. Subsequent servers are separated by an empty line. The file must be terminated by an empty line.
+The server requires a file containing all hostnames of servers in their neighbourhood (in the form `host:port`). These are stored in `neighbourhood.olaf` as plaintext, followed by the server's public key. Subsequent servers are separated by an empty line.
 
 ```
 localhost:1443
