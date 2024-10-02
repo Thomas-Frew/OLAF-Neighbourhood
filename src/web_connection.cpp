@@ -27,9 +27,8 @@ auto WebConnection::read_file(std::string resource) -> void {
     if (curl) {
         curl_easy_setopt(curl, CURLOPT_URL, resource.c_str());
 
-        // Skip SSL certificate verification (equivalent to -k in curl)
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+        // Use the cacert
+        curl_easy_setopt(curl, CURLOPT_CAINFO, "rootCA_cert.pem");
 
         // Open the file for writing
         file = fopen(filename.c_str(), "wb");
