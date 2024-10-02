@@ -65,6 +65,8 @@ This file should be constructed manually and will be the same between all server
 
 The server is written in Python and, therefore, does not get built. All server source code is stored in `server`, with the entry point being `server.py`.
 
+> Note: This project depends on some external libraries you might need to download via `pip`. Please download all missing libraries as instructed by python3.
+
 ### Running the Server
 
 The server is run in `/server` as `python3 ./server.py [ws_port]? [web_port]?`. Python 3.10 or above is required.
@@ -97,7 +99,7 @@ openssl rsa -in private_key.pem -pubout -out public_key.pem
 
 ### Building the Client
 
-The Client is written in C++, with all dependencies managed by CMake. To build the client, write the following commands in the project root (`/`):
+The Client is written in C++, with all dependencies managed by CMake.* To build the client, write the following commands in the project root (`/`):
 
 ```bash
 mkdir build
@@ -106,6 +108,8 @@ cmake --build build
 ```
 
 The client will be built as `/client/client`.
+
+> *Note: You may need to download the library for [Boost Beast](https://github.com/boostorg/beast) and place it in your PATH.
 
 ### Running the Client
 
