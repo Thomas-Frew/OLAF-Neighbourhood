@@ -457,7 +457,8 @@ class Server:
 
         # Remove the client
         del self.clients[client_data.id]
-        self.all_clients[self.websocket_hostname].remove(client_data.id)
+        self.all_clients[self.websocket_hostname].remove(
+            client_data.public_key)
 
         # Log disconnect event
         print(f"Client disconnected with id: {client_data.id}")
