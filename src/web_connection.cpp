@@ -3,7 +3,7 @@
 #include <iostream>
 #include <string>
 
-static size_t WriteCallback(void *contents, size_t size, size_t nmemb,
+static size_t write_callback(void *contents, size_t size, size_t nmemb,
                             std::string *response) {
     size_t totalSize = size * nmemb;
     response->append((char *)contents, totalSize);
@@ -16,11 +16,8 @@ WebConnection::WebConnection(std::string host, std::string port)
 auto WebConnection::read_file(std::string resource) -> void {
     CURL *curl;
     CURLcode result_code;
-    FILE *file;
-    std::string filename;
-
-    size_t last_slash = resource.find_last_of('/');
-    filename = resource.substr(last_slash + 1);
+    long response_code = 0;
+    std::string response_string;
 
     // Initialize CURL
     curl = curl_easy_init();
@@ -30,25 +27,25 @@ auto WebConnection::read_file(std::string resource) -> void {
         // Use the cacert
         curl_easy_setopt(curl, CURLOPT_CAINFO, "rootCA_cert.pem");
 
-        // Open the file for writing
-        file = fopen(filename.c_str(), "wb");
-        if (file) {
-            // Set the write function to write the response data to the file
-            curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
+        // Set the write function to store the response data into the string
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_string);
 
-            // Perform the request, and check for errors
-            result_code = curl_easy_perform(curl);
-            if (result_code != CURLE_OK) {
-                std::cerr << "curl_easy_perform() failed: "
-                          << curl_easy_strerror(result_code) << std::endl;
-            } else {
-                std::cout << "File downloaded successfully!" << std::endl;
-            }
+        // Perform the request
+        result_code = curl_easy_perform(curl);
 
-            fclose(file);
+        // Check for errors
+        if (result_code != CURLE_OK) {
+            std::cerr << "curl_easy_perform() failed: "
+                      << curl_easy_strerror(result_code) << std::endl;
         } else {
-            std::cerr << "Failed to open file for writing: " << filename
-                      << std::endl;
+            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+            if (response_code >= 400) {
+                std::cerr << "An error occured wit hcode: " << response_code << std::endl;
+            } else {
+                std::cout << "File content received: " << std::endl;
+                std::cout << response_string << std::endl;
+            }
         }
 
         // Cleanup CURL
@@ -56,7 +53,7 @@ auto WebConnection::read_file(std::string resource) -> void {
     } else {
         std::cerr << "Failed to initialize CURL!" << std::endl;
     }
-};
+}
 
 auto WebConnection::write_file(std::string filename) -> std::string {
     CURL *curl;
