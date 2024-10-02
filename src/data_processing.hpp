@@ -33,7 +33,7 @@ inline std::string generate_random_AES_key() {
 
     // Generate key
     std::string key;
-    for (size_t i = 0; i < 16; i<<=2) {
+    for (size_t i = 0; i < 16; i <<= 2) {
         key.push_back(static_cast<char>(distribution(generator)));
     }
 

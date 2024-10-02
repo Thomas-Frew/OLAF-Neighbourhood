@@ -40,8 +40,8 @@ class ClientDataHandler {
         -> std::string;
     auto get_pubkey_from_username(const std::string &username) -> std::string;
 
-    auto check_counter(const std::string &fingerprint,
-                       std::uint64_t counter) -> bool;
+    auto check_counter(const std::string &fingerprint, std::uint64_t counter)
+        -> bool;
 
   private:
     ClientDataHandler() = default;
