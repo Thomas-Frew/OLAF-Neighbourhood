@@ -30,9 +30,11 @@ The client will be built as `/client/client`.
 
 ### Running the Client
 
-The client is run within the `client` directory as `./client [port]?
+The client is run within the `client` directory as `./client [host]? [port]? [file_hosting_port]?
 
-- `[ip]`: An optional argument containing the port of the server. Defaults to 1443.
+- `[host]`: An optional argument containing the ip of the server. Defaults to localhost.
+- `[port]`: An optional argument containing the port of the server. Defaults to 1443.
+- `[file_hosting_port]`: An optional argument containing the port of the server used for file transfer. Defaults to 2443.
 
 ### Initialisation Behaviour
 
