@@ -41,6 +41,7 @@ build/*
 # Output dirs
 client/*
 *uploads/
+*tmp/
 *.pem
 *.srl
 *.olaf

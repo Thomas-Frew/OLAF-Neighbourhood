@@ -229,7 +229,9 @@ class Server:
             )
 
         file_name = "file_" + str(int(time())) + "_" + str(uuid.uuid4().hex)
-        file_path = os.path.join("uploads", file_name)
+        # We store files in our tmp directory, as they should be periodically
+        # cleaned out manually by the server owner.
+        file_path = os.path.join("tmp", file_name)
 
         with open(file_path, 'wb') as f:
             f.write(file_data)
@@ -245,8 +247,8 @@ class Server:
         # Resolve windows paths
         file_name = file_name.replace('\\', '/')
 
-        # Get the absolute path of the file, joining with the uploads directory
-        uploads_dir = os.path.abspath("uploads")
+        # Get the absolute path of the file, joining with the tmp directory
+        uploads_dir = os.path.abspath("tmp")
         file_path = os.path.normpath(os.path.join(uploads_dir, file_name))
 
         # Check that the file exists
