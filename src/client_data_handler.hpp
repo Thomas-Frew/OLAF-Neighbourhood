@@ -1,3 +1,5 @@
+/* Created by Jack Morton and Thomas Frew, of group 48. */
+
 #pragma once
 #include "data_processing.hpp"
 #include <atomic>
@@ -37,14 +39,14 @@ class ClientDataHandler {
 
     auto get_fingerprint(const std::string &username) -> std::string;
 
-    auto
-    get_pubkey_from_fingerprint(const std::string &fingerprint) -> std::string;
+    auto get_pubkey_from_fingerprint(const std::string &fingerprint)
+        -> std::string;
     auto get_pubkey_from_username(const std::string &username) -> std::string;
 
     auto get_server_from_username(const std::string &username) -> std::string;
 
-    auto check_counter(const std::string &fingerprint,
-                       std::uint64_t counter) -> bool;
+    auto check_counter(const std::string &fingerprint, std::uint64_t counter)
+        -> bool;
 
   private:
     ClientDataHandler() = default;
@@ -89,8 +91,8 @@ class ClientDataHandler {
      * Get client data from a username, in a const context. Assumes we have a
      * lock on the global mutex.
      */
-    auto
-    client_of_username(const std::string &username) const -> const ClientData &;
+    auto client_of_username(const std::string &username) const
+        -> const ClientData &;
 
     class ClientData {
       public:

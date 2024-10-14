@@ -1,3 +1,5 @@
+/* Created by Jack Morton and Thomas Frew, of group 48. */
+
 #pragma once
 
 #include "client_data_handler.hpp"
@@ -17,9 +19,9 @@ class MessageHandler {
 
     enum class VerificationStatus;
 
-    auto
-    verify_message(const Message &message,
-                   const std::string &fingerprint) const -> VerificationStatus;
+    auto verify_message(const Message &message,
+                        const std::string &fingerprint) const
+        -> VerificationStatus;
 
     auto handle_public_chat(Message &&message) -> void;
     auto handle_private_chat(Message &&message) -> void;

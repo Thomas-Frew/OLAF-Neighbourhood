@@ -1,3 +1,5 @@
+/* Created by Jack Morton and Thomas Frew, of group 48. */
+
 #include "connection.hpp"
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl.hpp>

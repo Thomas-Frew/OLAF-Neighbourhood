@@ -1,3 +1,5 @@
+/* Created by Jack Morton and Thomas Frew, of group 48. */
+
 #include "web_connection.hpp"
 #include <curl/curl.h>
 #include <fstream>
@@ -110,7 +112,8 @@ auto WebConnection::write_file(std::string filename) -> std::string {
                     std::cerr << "An error occured with code: " << response_code
                               << std::endl;
                 } else {
-                    std::cout << std::endl << "File " << filename << " uploaded.";
+                    std::cout << std::endl
+                              << "File " << filename << " uploaded.";
                 }
             }
 
