@@ -1,3 +1,5 @@
+# Created by Jack Morton and Thomas Frew, of group 48.
+
 cmake_policy(SET CMP0167 NEW)
 
 find_package(OpenSSL REQUIRED)

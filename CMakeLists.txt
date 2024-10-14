@@ -1,3 +1,5 @@
+# Created by Jack Morton and Thomas Frew, of group 48.
+
 cmake_minimum_required(VERSION 3.22)
 project(olafs_neighbourhood)
 

@@ -1,3 +1,5 @@
+# Created by Jack Morton and Thomas Frew, of group 48.
+
 add_executable(client main.cpp connection.cpp client.cpp messagehandler.cpp messages.cpp client_data_handler.cpp web_connection.cpp)
 set_target_properties(client PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/client")
 
