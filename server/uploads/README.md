@@ -1,4 +1,6 @@
 # OLAF-Neighbourhood
+_Created by Jack Morton and Thomas Frew, of group 48._
+
 The file upload endpoint for OLAF's Neighbourhood protocol.
 
 ## Debugging
