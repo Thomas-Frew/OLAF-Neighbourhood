@@ -401,9 +401,11 @@ class Server:
         """ Handle SERVER_HELLO messages. """
 
         # Verify server hello
-        self.verify_message(public_key, message_json, message_data, user_data)
-
         hostname = message_data.get('hostname')
+        self.verify_message(
+            self.servers[hostname].public_key, message_json, message_data, None
+        )
+
         self.servers[hostname].add_websocket(websocket)
         self.socket_identifier[websocket] = self.servers[hostname]
         self.all_clients[hostname] = []
@@ -420,8 +422,9 @@ class Server:
     async def handle_hello(self, websocket, message_json, message_data):
         """ Handle HELLO messages. """
 
-        # Verify server hello
-        self.verify_message(public_key, message_json, message_data, user_data)
+        # Verify hello
+        self.verify_message(message_data.get('public_key'),
+                            message_json, message_data, None)
 
         # Register client
         public_key = message_data.get('public_key')
