@@ -130,7 +130,12 @@ class ClientDataHandler {
             if (counter < this->m_counter) {
                 return false;
             } else {
-                this->m_counter = counter + 1;
+                // Perform saturating add to avoid overflow
+                this->m_counter =
+                    std::min(counter,
+                             std::numeric_limits<std::uint64_t>::max() -
+                                 std::uint64_t{1}) +
+                    std::uint64_t{1};
                 return true;
             }
         }
