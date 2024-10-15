@@ -1,3 +1,5 @@
+/* Created by Jack Morton and Thomas Frew, of group 48. */
+
 #include "messagehandler.hpp"
 #include "data_processing.hpp"
 #include "messages.hpp"

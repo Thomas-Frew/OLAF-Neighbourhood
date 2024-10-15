@@ -1,11 +1,14 @@
+/* Created by Jack Morton and Thomas Frew, of group 48. */
+
 #include "client_data_handler.hpp"
 #include <utility>
 
 std::atomic<std::uint64_t> ClientDataHandler::ClientData::m_username_counter =
     0;
 
-auto ClientDataHandler::update_client_username(
-    const std::string &old_name, const std::string &new_name) -> void {
+auto ClientDataHandler::update_client_username(const std::string &old_name,
+                                               const std::string &new_name)
+    -> void {
     std::lock_guard guard{this->m_lock};
     if (this->m_username_map.contains(new_name)) {
         throw std::runtime_error{"Username already exists"};
@@ -22,8 +25,9 @@ auto ClientDataHandler::is_registered(const std::string &fingerprint) -> bool {
     return this->m_registered_users.contains(fingerprint);
 }
 
-auto ClientDataHandler::register_client(
-    const std::string &public_key, const std::string &server) -> std::string {
+auto ClientDataHandler::register_client(const std::string &public_key,
+                                        const std::string &server)
+    -> std::string {
     std::lock_guard guard{this->m_lock};
     auto client = ClientData{public_key, server};
 

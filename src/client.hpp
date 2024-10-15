@@ -1,3 +1,5 @@
+/* Created by Jack Morton and Thomas Frew, of group 48. */
+
 #pragma once
 
 #include "data_processing.hpp"

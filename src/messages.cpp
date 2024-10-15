@@ -1,3 +1,5 @@
+/* Created by Jack Morton and Thomas Frew, of group 48. */
+
 #include "messages.hpp"
 #include <map>
 #include <nlohmann/json.hpp>

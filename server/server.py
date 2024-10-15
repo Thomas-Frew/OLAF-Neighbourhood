@@ -1,3 +1,6 @@
+# Created by Jack Morton and Thomas Frew, of group 48. #
+
+
 import asyncio
 import websockets
 import json
