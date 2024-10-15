@@ -57,6 +57,19 @@ enum class MessageHandler::VerificationStatus {
     InvalidSignature,
 };
 
+namespace {
+auto print_untrusted_message(std::string message) -> void {
+    // Filter out ASCII escape codes (< 32)
+    std::string filtered_message;
+    for (unsigned char c : message) {
+        if (c >= (unsigned char)32) {
+            filtered_message.push_back(c);
+        }
+    }
+    std::cout << filtered_message;
+}
+} // namespace
+
 auto MessageHandler::handle_public_chat(Message &&message) -> void {
     const auto &data = static_cast<const PublicChatData &>(message.data());
 
@@ -76,7 +89,9 @@ auto MessageHandler::handle_public_chat(Message &&message) -> void {
     std::cout << "[PUBLIC_CHAT] "
               << this->m_client_data_handler.get_username(
                      std::string{data.sender()})
-              << ": " << data.message() << std::endl;
+              << ": ";
+    print_untrusted_message(data.message());
+    std::cout << std::endl;
 }
 
 auto MessageHandler::handle_private_chat(Message &&message) -> void {
@@ -118,8 +133,9 @@ auto MessageHandler::handle_private_chat(Message &&message) -> void {
             continue;
 
         auto decrypted_text = aes_gcm_decrypt(text, *symm_key);
-        std::cout << "[PRIVATE_CHAT] " << sender << ": " << decrypted_text
-                  << std::endl;
+        std::cout << "[PRIVATE_CHAT] " << sender << ": ";
+        print_untrusted_message(decrypted_text);
+        std::cout << std::endl;
         break;
     }
 }
