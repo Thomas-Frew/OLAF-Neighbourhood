@@ -10,7 +10,7 @@ We are proud to present our CLI chat app, with a backend based on [OLAF-Neighbou
 - Group messages to all participants. 
 - Point-to-point file transfer.
 
-> Note! While we have implemented all security features of OLAF-Neighbourhood, this submission contains several backdoors intended for exploitation during a CTF. Do not use this in a production setting!
+> Note! This chat application was made for our Secure Programming course. We designed this protocol ourselves with the help of a few other groups (names listed in the protocol repo), combining the OLAF protocol with the Neighbourhood protocol, which Tom and I originally designed ourselves. It is meant to be simple, and have both a secure version and a 'backdoored' version for others to hack into. This branch contains the 'safe' version, but keep in mind there have been no external security audits on this safe version and it may still contain various bugs and exploits!
 
 ## Server
 
