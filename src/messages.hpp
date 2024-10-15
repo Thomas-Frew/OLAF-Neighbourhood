@@ -45,8 +45,8 @@ class HelloData : public MessageData {
     explicit HelloData(std::string public_key)
         : m_public_key(std::move(public_key)) {}
 
-    static auto
-    from_json(const nlohmann::json &j) -> std::unique_ptr<HelloData>;
+    static auto from_json(const nlohmann::json &j)
+        -> std::unique_ptr<HelloData>;
 
   private:
     std::string m_public_key;
@@ -60,8 +60,8 @@ class PublicChatData : public MessageData {
     explicit PublicChatData(std::string fingerprint, std::string message)
         : m_sender(std::move(fingerprint)), m_message(std::move(message)) {}
 
-    static auto
-    from_json(const nlohmann::json &j) -> std::unique_ptr<PublicChatData>;
+    static auto from_json(const nlohmann::json &j)
+        -> std::unique_ptr<PublicChatData>;
 
     inline auto message() const noexcept -> std::string_view {
         return this->m_message;
@@ -98,8 +98,8 @@ class ClientListData : public MessageData {
         std::map<std::string, std::vector<std::string>> &&online_list)
         : m_online_list(std::move(online_list)) {}
 
-    static auto
-    from_json(const nlohmann::json &j) -> std::unique_ptr<ClientListData>;
+    static auto from_json(const nlohmann::json &j)
+        -> std::unique_ptr<ClientListData>;
 
     auto users() const noexcept
         -> const std::map<std::string, std::vector<std::string>> & {
@@ -128,8 +128,8 @@ class PrivateChatData : public MessageData {
           m_symm_keys(std::move(symm_keys)),
           m_participants(std::move(participants)), m_message(message) {}
 
-    static auto
-    from_json(const nlohmann::json &j) -> std::unique_ptr<PrivateChatData>;
+    static auto from_json(const nlohmann::json &j)
+        -> std::unique_ptr<PrivateChatData>;
 
     inline auto message() const noexcept -> std::string_view {
         return this->m_message;
@@ -174,7 +174,7 @@ class Message {
           m_counter(counter) {}
 
     explicit Message(MessageType type, std::unique_ptr<MessageData> &&data)
-        : m_type(type), m_data(std::move(data)) {}
+        : m_type(type), m_data(std::move(data)), m_signature(), m_counter() {}
 
   private:
     MessageType m_type;
