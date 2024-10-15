@@ -65,6 +65,8 @@ This file should be constructed manually and will be the same between all server
 
 The server is written in Python and, therefore, does not get built. All server source code is stored in `server`, with the entry point being `server.py`.
 
+You will need to download `websockets`, `cryptography`, and `aiohttp`, all available with `pip intsall [package]`. We also expect you to be running python3.10 or higher.
+
 ### Running the Server
 
 The server is run in `/server` as `python3 ./server.py [ws_port]? [web_port]?`. Python 3.10 or above is required.
@@ -97,7 +99,7 @@ openssl rsa -in private_key.pem -pubout -out public_key.pem
 
 ### Building the Client
 
-The Client is written in C++, with all dependencies managed by CMake. To build the client, write the following commands in the project root (`/`):
+The Client is written in C++, with dependencies managed by CMake. To build the client, write the following commands in the project root (`/`):
 
 ```bash
 mkdir build
@@ -106,6 +108,10 @@ cmake --build build
 ```
 
 The client will be built as `/client/client`.
+
+You are required to globally install the OpenSSL and Boost Beast libraries. These should be accessible at `/usr/include/openssl/` and `/usr/include/boost/beast/` respectively, or some other directory added to your include path. If you don't have them already, they should be readily accessible through your package manager.
+
+We use C++23 throughout this project. At time of writing, C++23 features are sparsely implemented across various compilers. It is recommended you use clang 18 or gcc 14.
 
 ### Running the Client
 
