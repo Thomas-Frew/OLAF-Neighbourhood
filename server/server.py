@@ -288,15 +288,9 @@ class Server:
     async def connect_to_neighbourhood(self):
         """ Connect to all servers in the neighbourhood. """
 
-        # The auth context of the server you are connecting to
-        # TODO: Check if we should use anything non-default
         auth_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-
-        # TODO: Get the cert of the server you want to connect to
         auth_context.load_verify_locations(cafile="rootCA_cert.pem")
 
-        # NOTE: Currently, neighbourhood.olaf is a glorified IP list.
-        # This will change. It will include public keys.
         with open('neighbourhood.olaf', 'r') as file:
             hosts = []
             lines = [line.strip() for line in file]
@@ -384,13 +378,18 @@ class Server:
         """ handle the first message sent by a new connection """
         try:
             message = await websocket.recv()
-            _, message_type, message_data = self.read_message(message)
+            message_json, message_type, message_data = self.read_message(
+                message)
 
             match message_type:
                 case MessageType.HELLO:
-                    await self.handle_hello(websocket, message_data)
+                    await self.handle_hello(
+                        websocket, message_json, message_data
+                    )
                 case MessageType.SERVER_HELLO:
-                    await self.handle_server_hello(websocket, message_data)
+                    await self.handle_server_hello(
+                        websocket, message_json, message_data
+                    )
                 case _:
                     print("Unestablished client sent message of type: " +
                           f"{message_type}, closing connection")
@@ -398,11 +397,15 @@ class Server:
         except Exception as e:
             print(f"Unestablished connection closed due to error: {e}")
 
-    async def handle_server_hello(self, websocket, message_data):
+    async def handle_server_hello(self, websocket, message_json, message_data):
         """ Handle SERVER_HELLO messages. """
 
-        # TODO: Verify server hello
+        # Verify server hello
         hostname = message_data.get('hostname')
+        self.verify_message(
+            self.servers[hostname].public_key, message_json, message_data, None
+        )
+
         self.servers[hostname].add_websocket(websocket)
         self.socket_identifier[websocket] = self.servers[hostname]
         self.all_clients[hostname] = []
@@ -416,11 +419,12 @@ class Server:
 
         await new_listener
 
-    async def handle_hello(self, websocket, message_data):
+    async def handle_hello(self, websocket, message_json, message_data):
         """ Handle HELLO messages. """
 
-        # TODO: Verify no duplicate HELLO messages
-        # Also, cannot send other messages prior to HELLO
+        # Verify hello
+        self.verify_message(message_data.get('public_key'),
+                            message_json, message_data, None)
 
         # Register client
         public_key = message_data.get('public_key')
@@ -499,12 +503,10 @@ class Server:
         # Log disconnect event
         print(f"Server disconnected with hostname: {hostname}")
 
-    def verify_message(self, public_key, message_json, message_data, user_data):
+    def verify_message(
+            self, public_key, message_json, message_data, user_data
+    ):
         counter = int(message_json.get('counter'))
-
-        if user_data.counter >= counter:
-            print("Warning! Counter for this message has not been incremeneted.")
-        user_data.update_counter(counter)
 
         data_string = json.dumps(message_data, separators=(
             ',', ':')) + str(counter)
@@ -515,8 +517,15 @@ class Server:
         verify_result = DataProcessing.verify_signature(
             public_key, data_string, signature)
 
-        if (not verify_result):
-            print("Warning! Signature could not be verified for message.")
+        if not verify_result:
+            return False
+
+        if user_data is not None:
+            if user_data.counter >= counter:
+                return False
+            user_data.update_counter(counter)
+
+        return True
 
     async def handle_server(self, websocket, message):
         message_json, message_type, message_data = self.read_message(message)
