@@ -378,13 +378,18 @@ class Server:
         """ handle the first message sent by a new connection """
         try:
             message = await websocket.recv()
-            _, message_type, message_data = self.read_message(message)
+            message_json, message_type, message_data = self.read_message(
+                message)
 
             match message_type:
                 case MessageType.HELLO:
-                    await self.handle_hello(websocket, message_data)
+                    await self.handle_hello(
+                        websocket, message_json, message_data
+                    )
                 case MessageType.SERVER_HELLO:
-                    await self.handle_server_hello(websocket, message_data)
+                    await self.handle_server_hello(
+                        websocket, message_json, message_data
+                    )
                 case _:
                     print("Unestablished client sent message of type: " +
                           f"{message_type}, closing connection")
@@ -392,10 +397,12 @@ class Server:
         except Exception as e:
             print(f"Unestablished connection closed due to error: {e}")
 
-    async def handle_server_hello(self, websocket, message_data):
+    async def handle_server_hello(self, websocket, message_json, message_data):
         """ Handle SERVER_HELLO messages. """
 
-        # TODO: Verify server hello
+        # Verify server hello
+        self.verify_message(public_key, message_json, message_data, user_data)
+
         hostname = message_data.get('hostname')
         self.servers[hostname].add_websocket(websocket)
         self.socket_identifier[websocket] = self.servers[hostname]
@@ -410,10 +417,11 @@ class Server:
 
         await new_listener
 
-    async def handle_hello(self, websocket, message_data):
+    async def handle_hello(self, websocket, message_json, message_data):
         """ Handle HELLO messages. """
 
-        # TODO: Verify no duplicate HELLO messages
+        # Verify server hello
+        self.verify_message(public_key, message_json, message_data, user_data)
 
         # Register client
         public_key = message_data.get('public_key')
@@ -492,12 +500,10 @@ class Server:
         # Log disconnect event
         print(f"Server disconnected with hostname: {hostname}")
 
-    def verify_message(self, public_key, message_json, message_data, user_data):
+    def verify_message(
+            self, public_key, message_json, message_data, user_data
+    ):
         counter = int(message_json.get('counter'))
-
-        if user_data.counter >= counter:
-            print("Warning! Counter for this message has not been incremeneted.")
-        user_data.update_counter(counter)
 
         data_string = json.dumps(message_data, separators=(
             ',', ':')) + str(counter)
@@ -508,8 +514,15 @@ class Server:
         verify_result = DataProcessing.verify_signature(
             public_key, data_string, signature)
 
-        if (not verify_result):
-            print("Warning! Signature could not be verified for message.")
+        if not verify_result:
+            return False
+
+        if user_data is not None:
+            if user_data.counter >= counter:
+                return False
+            user_data.update_counter(counter)
+
+        return True
 
     async def handle_server(self, websocket, message):
         message_json, message_type, message_data = self.read_message(message)
