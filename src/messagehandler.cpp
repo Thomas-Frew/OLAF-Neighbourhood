@@ -83,6 +83,13 @@ auto MessageHandler::handle_private_chat(Message &&message) -> void {
         return;
     }
 
+    constexpr auto max_members = 10UZ;
+    if (data.participants().size() > 10UZ) {
+        std::cout << "[SYSTEM] Private chats only support up to " << max_members
+                  << " members." << std::endl;
+        return;
+    }
+
     switch (this->verify_message(message, data.participants().front())) {
     case VerificationStatus::Verified:
         break;
