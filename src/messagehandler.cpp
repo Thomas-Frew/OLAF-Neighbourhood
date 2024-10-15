@@ -58,7 +58,7 @@ enum class MessageHandler::VerificationStatus {
 };
 
 namespace {
-auto print_untrusted_message(std::string message) -> void {
+auto print_untrusted_message(std::string_view message) -> void {
     // Filter out ASCII escape codes (< 32)
     std::string filtered_message;
     for (unsigned char c : message) {
