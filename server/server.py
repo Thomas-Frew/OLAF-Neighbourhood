@@ -288,15 +288,9 @@ class Server:
     async def connect_to_neighbourhood(self):
         """ Connect to all servers in the neighbourhood. """
 
-        # The auth context of the server you are connecting to
-        # TODO: Check if we should use anything non-default
         auth_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-
-        # TODO: Get the cert of the server you want to connect to
         auth_context.load_verify_locations(cafile="rootCA_cert.pem")
 
-        # NOTE: Currently, neighbourhood.olaf is a glorified IP list.
-        # This will change. It will include public keys.
         with open('neighbourhood.olaf', 'r') as file:
             hosts = []
             lines = [line.strip() for line in file]
@@ -420,7 +414,6 @@ class Server:
         """ Handle HELLO messages. """
 
         # TODO: Verify no duplicate HELLO messages
-        # Also, cannot send other messages prior to HELLO
 
         # Register client
         public_key = message_data.get('public_key')
