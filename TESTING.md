@@ -1,11 +1,19 @@
 # Testing Process
 
-## Forms of Interoperability
+## Self-Testing
 
-## Server-Server Tests
 
-## Server-Client Tests
 
-## Client-Client Tests
 
-## Exploit Enumeration
+## Interoperability Testing
+
+
+### Forms of Interoperability
+
+### Server-Server Tests
+
+### Server-Client Tests
+
+### Client-Client Tests
+
+### Exploit Enumeration
