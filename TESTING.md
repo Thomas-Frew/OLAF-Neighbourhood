@@ -1,8 +1,17 @@
-# Testing Process
+# Testing
+
+![C++](https://img.shields.io/badge/c++-%2300599C.svg?style=for-the-badge&logo=c%2B%2B&logoColor=white)
+![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
+
+
+We are proud to present the user/interoperability testing framework we used for our CLI chat app, based on [OLAF-Neighbourhood protocol](https://github.com/xvk-64/2024-secure-programming-protocol).
+
+This document contains our testing suite and approaches for user/iteroperability testing.
 
 ## Test List
 
 ### Server: Startup
+![Static Badge](https://img.shields.io/badge/Tests-Passing-green)
 
 When a server is lanched, it should:
 
@@ -11,7 +20,9 @@ When a server is lanched, it should:
 - [ ] Send a "CLIENT_UPDATE_REQUEST" message to all connected neighbours.
 - [ ] Log all neighbours that did had a failed connection.
 
-### Server: Runtime
+### Server: Runtime 
+
+![Static Badge](https://img.shields.io/badge/Tests-Passing-green)
 
 When a server is running, it should:
 
@@ -28,6 +39,8 @@ When a server is running, it should:
 
 ### Server: Security
 
+![Static Badge](https://img.shields.io/badge/Tests-Passing-green)
+
 When a server is running, it should:
 
 - [ ] Sign all signed messages with RSA, PSS padding with 256-SHA.
@@ -43,6 +56,8 @@ When a server is running, it should:
 
 ### Client: Startup
 
+![Static Badge](https://img.shields.io/badge/Tests-Passing-green)
+
 When a client is lanched, it should:
 
 - [ ] Try to connect with only its parent server.
@@ -53,6 +68,8 @@ When a client is lanched, it should:
 
 ### Client: Runtime
 
+![Static Badge](https://img.shields.io/badge/Tests-Passing-green)
+
 When a client is running, it should:
 
 - [ ] Avoid crashing randomly.
@@ -62,6 +79,8 @@ When a client is running, it should:
 
 ### Client: Interactivity
 
+![Static Badge](https://img.shields.io/badge/Tests-Passing-green)
+
 - [ ] Send "PUBLIC_CHAT" messages to everyone with the "public_chat" command.
 - [ ] Send "PRIVATE_CHAT" messages to everyone with the "private_chat"/"chat" command.
 - [ ]Send "CLIENT_LIST_REQUEST" messages to their parent server with the "online_list" command.
@@ -70,6 +89,8 @@ When a client is running, it should:
 - [ ] Locally rename either clients with the "rename" command.
 
 ### Client: Security
+
+![Static Badge](https://img.shields.io/badge/Tests-Passing-green)
 
 When a server is running, it should:
 
@@ -86,6 +107,8 @@ When a server is running, it should:
 
 ## Self-Testing
 
+We used a rigorous testing framework when developing the app, to produce directed quality assurance and avoid regressing behaviour.
+
 ### Atomicity
 
 Only one component of the software (either the client or server), should be updated at a time. Then, one of two tests can be performed. 
@@ -94,14 +117,15 @@ Only one component of the software (either the client or server), should be upda
 
 If the feature is only partly complete, debug statements can be used to test its functionality. The entire "Test List" does not need to be tested, although it could be useful to test closely coupled features. 
 
-If a feature is complete, an official test should be added to the "Test List" to ensure it works. Then, all tests from the "Test List" should be conducted to prevent regressing behaviour.
+If a feature is complete, an official test should be added to the "Test List" to ensure it works. Then, a copy of the "Test List" should be created, and all tests verified, to prevent regressing behaviour.
 
-All tests from the "Test List" should also be conducted when performing a pull request. If one of the tests fail, this could be mentioned as a comment on the PR.
+Full testing should also be conducted when performing a pull request. If one of the tests fail, this could be mentioned as a comment on the PR.
 
 ## Interoperability Testing
 
+By reusing important components from our "Self-Testing" framework, we rigorously tested our app's interoperability with other teams.
 
-### Forms of Interoperability
+### Kinds of Interoperability
 
 ### Server-Server Tests
 
