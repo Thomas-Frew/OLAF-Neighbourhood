@@ -11,8 +11,8 @@
 #include <iostream>
 #include <string>
 
-inline void cli(Connection &&connection, WebConnection &&web_connection,
-                Client &&client, std::atomic<bool> &running) {
+inline void cli(Connection &connection, WebConnection &web_connection,
+                Client &client, std::atomic<bool> &running) {
     // Send hello message upon connecting [REQUIRED BY PROTOCOL]
     {
         auto message_data = std::make_unique<HelloData>(client.getPublicKey());

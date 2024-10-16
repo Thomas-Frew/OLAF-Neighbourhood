@@ -176,7 +176,7 @@ class Message {
           m_counter(counter) {}
 
     explicit Message(MessageType type, std::unique_ptr<MessageData> &&data)
-        : m_type(type), m_data(std::move(data)) {}
+        : m_type(type), m_data(std::move(data)), m_signature(), m_counter() {}
 
   private:
     MessageType m_type;

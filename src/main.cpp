@@ -64,7 +64,7 @@ int main(int argc, char **argv) {
     Client client(public_key, private_key);
 
     // Begin the command-line interface
-    cli(std::move(conn), std::move(web_conn), std::move(client), running);
+    cli(conn, web_conn, client, running);
 
     // Close the WebSocket connection
     running = false;
