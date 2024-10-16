@@ -18,7 +18,7 @@ When a server is lanched, it should:
 - [ ] Try to connect to all others in their neighbourhood.
 - [ ] Send a "SERVER_HELLO" message to all connected neighbours.
 - [ ] Send a "CLIENT_UPDATE_REQUEST" message to all connected neighbours.
-- [ ] Log all neighbours that did had a failed connection.
+- [ ] Log all neighbours that had a failed connection.
 
 ### Server: Runtime 
 
@@ -44,14 +44,13 @@ When a server is running, it should:
 When a server is running, it should:
 
 - [ ] Sign all signed messages with RSA, PSS padding with 256-SHA.
-- [ ] Reject non-HTTPS and Secure Websocket connections.
+- [ ] Reject non-HTTPS and Websocket over HTTPS connections.
 - [ ] Only accept connections with certificates from their CA.
 - [ ] Reject messages with invalid JSON.
 - [ ] Reject signed messages with invalid signatures.
 - [ ] Reject messages with invalid counters.
 - [ ] Reject file uploads larger than 500 kB.
-- [ ] Commit and retrieve files directly from the "tmp" directory.
-- [ ] Drop a client or server connection that is behaving strangely.
+- [ ] Commit and retrieve files directly from the "uploads" directory.
 - [ ] Log all messages in a secure location.
 
 ### Client: Startup
@@ -75,7 +74,7 @@ When a client is running, it should:
 - [ ] Avoid crashing randomly.
 - [ ] Handle "PUBLIC_CHAT" messages by displaying the sender and message.
 - [ ] Handle "PRIVATE_CHAT" messages by attempting to decrypt them, displaying the sender and message if successful.
-- [ ] Handle "CLIENT_LIST" messages by attempting to decrypt them, displaying the sender and message if successful.
+- [ ] Handle "CLIENT_LIST" messages by displaying all online users.
 
 ### Client: Interactivity
 
@@ -83,10 +82,10 @@ When a client is running, it should:
 
 - [ ] Send "PUBLIC_CHAT" messages to everyone with the "public_chat" command.
 - [ ] Send "PRIVATE_CHAT" messages to everyone with the "private_chat"/"chat" command.
-- [ ]Send "CLIENT_LIST_REQUEST" messages to their parent server with the "online_list" command.
+- [ ] Send "CLIENT_LIST_REQUEST" messages to their parent server with the "online_list" command.
 - [ ] Upload files to their parent server with the "upload" command.
 - [ ] Download files from their parent server with the "download" command.
-- [ ] Locally rename either clients with the "rename" command.
+- [ ] Locally rename clients with the "rename" command.
 
 ### Client: Security
 
@@ -97,13 +96,12 @@ When a server is running, it should:
 - [ ] Sign all signed messages with RSA, PSS padding with 256-SHA.
 - [ ] Encrypt data in "PRIVATE_CHAT" messages symmetrically with AES GCM, and a securely generated key.
 - [ ] Encrypt symm_keys in "PRIVATE_CHAT" messages asymetrically with RSA.
-- [ ] Reject non-HTTPS and Secure Websocket connections.
+- [ ] Reject non-HTTPS and Websocket over HTTPS connections.
 - [ ] Only accept connections with certificates from their CA.
 - [ ] Reject messages with invalid JSON.
 - [ ] Reject signed messages with invalid signatures.
 - [ ] Reject messages with invalid counters.
 - [ ] Reject messages from unknown users (not in the client list).
-- [ ] Drop a server connection that is behaving strangely.
 
 ## Self-Testing
 
@@ -123,14 +121,26 @@ Full testing should also be conducted when performing a pull request. If one of 
 
 ## Interoperability Testing
 
-By reusing important components from our "Self-Testing" framework, we rigorously tested our app's interoperability with other teams.
+To test interoperabiltiy with other groups, we execute all tests from the "Test List". This rule ensures that our interoperability testing remains as rigorous as self-testing.
 
-### Kinds of Interoperability
+However, there are several combinations of our/other clients/servers to run these tests with. Which combinations capture the highest degree of interaction?
 
-### Server-Server Tests
+### Types of Interactions
 
-### Server-Client Tests
+There are four kinds of interactions we would like to work:
 
-### Client-Client Tests
+- **SS**: Server-Server interoperability: Our servers can interepret messages created by the other servers, and vice-versa.
 
-### Exploit Enumeration
+- **SC**: Server-Client interoperability: Our servers can interepret messages created by the other clients, and vice-versa.
+
+- **CS**: Client-Server interoperability: Our clients can interepret messages from created by the other servers, and vice-versa.
+
+- **CC**: Client-Client interoperability: Our clients can interepret messages from created by the other clients, and vice-versa. 
+
+### Levels of Interoperability
+
+Some combinations of clients/servers require more kinds of interactions to function. They should be used over  combinations that require fewer kinds of interactions, if possible.
+
+We are arranged these combination into levels, with lower-numbered levels containing a higher degree of interaction (and should be tested first).
+
+![Levels of Interoperability](/assets/levels-of-interoperability.png)
