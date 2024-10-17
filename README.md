@@ -111,7 +111,17 @@ cmake --build build
 
 The client will be built as `/client/client`.
 
-You are required to globally install the OpenSSL and Boost Beast libraries. These should be accessible at `/usr/include/openssl/` and `/usr/include/boost/beast/` respectively, or some other directory added to your include path. If you don't have them already, they should be readily accessible through your package manager.
+You are required to globally install the OpenSSL, Boost Beast, and Curl libraries. These should be accessible at `/usr/include/openssl/` and `/usr/include/boost/beast/` respectively, or some other directory added to your include path. If you don't have them already, they should be readily accessible through your package manager.
+
+To install boost beast in Kali Linux:
+```bash
+sudo apt-get install libboost-all-dev
+```
+
+To install libcurl in Kali Linux:
+```bash
+sudo apt-get install libcurl4-openssl-dev
+```
 
 We use C++23 throughout this project. At time of writing, C++23 features are sparsely implemented across various compilers. It is recommended you use clang 18 or gcc 14.
 
@@ -138,7 +148,7 @@ The CLI chat app acts like a terminal, forever taking in commands and returning 
 
 You will likely want to run multiple clients/servers on the same machine for testing. To do this, you should set up a directory (e.g. subdirectories of the `server` and `client` directories) for each instance of a client/server, with its own keys and other required files. Then, simply run the client or server from inside these directories (e.g., call `../client` rather than `./client` from `./client/user1/`)
 
-## Exection Examples
+## Examples
 
 ### Scenario 1: Client Talks to Self
 
